@@ -14,7 +14,7 @@ That leaves an all-interfaces deployment half usable and gives its operator noth
 
 `client-connection` takes `privilegedAuthority: 'loopback' | 'trusted-hosts'`, defaulting to `loopback`. The default reproduces the previous behaviour exactly, so no shipped composition changes; `trusted-hosts` passes the deployment's own `trustedHosts` to the same fence the ordinary methods already pass.
 
-The mode resolves once in `apply()` into one `privilegedHosts` list, and all three enforcement points read it: the `/api` privileged-method check, and both places `authority: 'loopback'` is honoured for a generic Connection channel (the shared-channel interceptor and a registered channel's own route). Splitting them would be a half-open door — one plane admitting a remote caller the other refuses — so the value is computed in one place and threaded, not re-derived.
+The field governs {@link PRIVILEGED_METHODS} and nothing else. A generic Connection channel declaring `authority: 'loopback'` keeps passing the fence with an empty list however this is set, because those two things have different owners: the privileged method set belongs to this package, which also owns the policy, while `authority: 'loopback'` is a *requirement its own author wrote down*. A deployment field that silently relaxed another package's stated requirement would make that declaration worthless, and a future consumer could acquire remote callers it never accepted.
 
 Widening does not weaken the fence itself. `trusted-hosts` names authorities; an undeclared or rebound Host is still refused on exactly the same methods, and `assertTrustedAuthority` still rejects a malformed entry at load. What changes is which named authorities the configuration plane answers, which is the deployment's fact to state.
 
@@ -36,6 +36,8 @@ An all-interfaces deployment that sets `privilegedAuthority: 'trusted-hosts'` se
 
 Nothing about authentication changed, and the boundary note's threat model still governs both modes: cross-site requests, opaque origins and rebound Hosts are refused in `trusted-hosts` exactly as in `loopback`. Restoring a narrower posture is editing one field, not reverting a patch.
 
+Widening this field is what made the settings wire's own redaction gap reachable from a network rather than from one machine, so the value guarantee had to become fail-closed first ([fail-closed secret redaction](2026-08-17-fail-closed-secret-redaction.md)). Serving the configuration plane to a network is only defensible because a secret can no longer ride a described value out.
+
 ## Testing
 
-`packages/client/connection/tests/node-half.host.spec.ts` pins both modes against one declared authority: the existing scenario keeps proving every privileged method 403s under the default while an ordinary read passes, and its counterpart proves the same methods reach the carrier under `trusted-hosts` while an undeclared Host still 403s on them — so the widening is bounded by the fence rather than replacing it.
+`packages/client/connection/tests/node-half.host.spec.ts` pins all three positions against one declared authority: the existing scenario keeps proving every privileged method 403s under the default while an ordinary read passes; its counterpart proves the same methods reach the carrier under `trusted-hosts` while an undeclared Host still 403s on them, so the widening is bounded by the fence rather than replacing it; and a third registers a generic channel and a shared interceptor with `authority: 'loopback'` under `trusted-hosts` and proves both still refuse the declared authority and run neither handler.

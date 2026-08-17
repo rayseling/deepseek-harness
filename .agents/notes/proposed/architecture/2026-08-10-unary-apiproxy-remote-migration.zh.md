@@ -78,7 +78,7 @@ Resolver 拥有的 `session-not-found` 和 `agent-busy` 错误保持稳定，因
 
 ## 特权调用权限
 
-Connection 必须在选择 Typert interceptor 或 API Proxy 回退路径之前检查调用方是否有权访问特权端点。该检查必须同时识别旧式点分名称和 Remote 斜杠端点，并保持以下已迁移操作仅限环回地址：
+Connection 必须在选择 Typert interceptor 或 API Proxy 回退路径之前检查调用方是否有权访问特权端点。该检查必须同时识别旧式点分名称和 Remote 斜杠端点，并让以下已迁移操作保持与其未迁移名称相同的权限范围（默认仅限环回地址）：
 
 - `agentPresets/readDocument`、`agentPresets/copy` 和 `agentPresets/remove`；
 - `credentials/describe`、`credentials/set` 和 `credentials/unset`。
@@ -108,7 +108,7 @@ Connection 必须在选择 Typert interceptor 或 API Proxy 回退路径之前�
 - 迁移表中的每个方法都可通过表中列出的 `ctx.remote` 服务调用，并且不存在生产环境中的旧版 API Proxy 路由、schema、映射表行、客户端 stub 或调用。
 - 签名匹配的现有方法直接带有 `@Remote`；每个新增方法都执行表中所述的适配，且不保留只做恒等转发的 `remote*` 包装层。
 - Agent／Session 集成测试证明共享 lookup 的各项结果，subagent 中断测试证明不会发生冷恢复。
-- 已迁移的特权端点拒绝受信任的非环回调用方，并接受环回调用方，且该判定在任一分发路径运行前完成。
+- 已迁移的特权端点解析权限的方式与未迁移的名称完全一致——即 `privilegedAuthority` 选定的授权，默认仅限环回（[配置面按需跟随 trustedHosts](../../implemented/architecture/2026-08-17-configuration-plane-authority.md)）——且该判定在任一分发路径运行前完成。非扩权是以该字段为准衡量的，而不是以环回作为常量。
 - 每项已迁移调用的 Client 行为和立即提交状态的行为保持等价，包括支持取消之处的取消行为。
 - 暂缓迁移的方法及其现有行为仍保留在 API Proxy 上。
 - 一次从干净状态开始的生成与构建会生成并消费所选的每项 Remote 贡献，且聚焦测试和最终仓库门禁均通过。

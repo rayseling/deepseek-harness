@@ -59,7 +59,9 @@ export interface ConnectionConfig {
   trustedHosts?: string[]
   /**
    * Which Host authorities may reach the privileged methods
-   * ({@link PRIVILEGED_METHODS}) and any `authority: 'loopback'` channel.
+   * ({@link PRIVILEGED_METHODS}). A generic Connection channel declaring
+   * `authority: 'loopback'` is unaffected — that is its author's requirement,
+   * and no deployment setting relaxes it.
    *
    * `loopback` (the default) admits only a loopback Host, so the
    * configuration plane stays same-machine however wide the carrier binds.
@@ -143,8 +145,8 @@ const PRIVILEGED_METHODS = new Set([
  * Mounts the API gateway under the browser transport prefix. Every request on
  * the prefix passes the browser-trust fence first (DNS-rebinding and
  * cross-site defense — [api-request-trust](./api-request-trust.ts));
- * privileged methods additionally pass it with an empty trust list, which
- * pins them to loopback.
+ * privileged methods additionally pass it with the authorities
+ * `privilegedAuthority` selects, which is the empty list by default.
  * @param ctx - Host plugin context.
  * @param config - resolved plugin config (schema defaults applied).
  */
@@ -158,10 +160,11 @@ export function apply(ctx: Context, config?: ConnectionConfig): void {
   if (ctx.get('apiProxy') !== undefined) assertImageBodyCapacity(ctx, maxRequestBodyBytes)
   // The configuration plane's own trust list: empty pins it to loopback, and
   // the deployment's authorities widen it to whatever the ordinary methods
-  // already reach. One value drives both planes that gate on it — the /api
-  // privileged-method check below and `authority: 'loopback'` channels.
+  // already reach. Scoped to PRIVILEGED_METHODS, the set this package owns: a
+  // generic channel's `authority: 'loopback'` is its own author's requirement,
+  // not a deployment's to relax.
   const privilegedHosts = (config?.privilegedAuthority ?? 'loopback') === 'trusted-hosts' ? trustedHosts : []
-  const connection = new HostConnectionService(ctx, trustedHosts, privilegedHosts)
+  const connection = new HostConnectionService(ctx, trustedHosts)
   const fetchHandler = connection.createSharedFetchHandler(API_PATH, {
     async fetch(request) {
       const pathname = new URL(request.url).pathname

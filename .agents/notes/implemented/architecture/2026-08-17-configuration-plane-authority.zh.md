@@ -14,7 +14,7 @@ Status: implemented
 
 `client-connection` 接受 `privilegedAuthority: 'loopback' | 'trusted-hosts'`，默认 `loopback`。默认值逐字复现原有行为，因此任何已发布的组合都不改变；`trusted-hosts` 则把本部署自己的 `trustedHosts` 交给普通方法本来就在通过的那道栅栏。
 
-模式在 `apply()` 中一次解析成一张 `privilegedHosts` 列表，三个强制点全部读它：`/api` 的特权方法检查，以及通用 Connection 通道上两处认 `authority: 'loopback'` 的地方（共享通道的 interceptor 与已注册通道自身的路由）。把它们分开会造成一扇半开的门——一个平面放行了另一个平面拒绝的远程调用方——所以这个值在一处算出后传递，而不是各自重新推导。
+该字段只管辖 {@link PRIVILEGED_METHODS}，别的都不管。通用 Connection 通道声明的 `authority: 'loopback'` 无论本字段怎么设，都继续以空表通过栅栏，因为这两者的所有者不同：特权方法集合属于本包，策略也属于本包；而 `authority: 'loopback'` 是*其作者自己写下的要求*。一个悄悄放宽别的包已声明要求的部署字段，会让那份声明变得毫无意义，而未来的消费者可能因此获得它从未接受过的远程调用方。
 
 放宽并不削弱栅栏本身。`trusted-hosts` 点名的是授权：未声明或被重绑的 Host 在完全相同的方法上仍被拒绝，`assertTrustedAuthority` 也仍在加载期拒绝畸形条目。改变的是配置面答复哪些具名授权，而这是部署方需要自己声明的事实。
 
@@ -36,6 +36,8 @@ Status: implemented
 
 认证方面没有任何改变，信任边界 Note 的威胁模型在两种模式下同样管辖：跨站请求、不透明源与被重绑的 Host 在 `trusted-hosts` 下与在 `loopback` 下同样被拒绝。要恢复更严的姿态，改的是一个字段，而不是回退一个补丁。
 
+正是放宽这个字段，把设置协议自身的脱敏缺口从「一台机器可达」变成了「一个网络可达」，所以值的保证必须先变成 fail-closed（[按 fail-closed 脱敏](2026-08-17-fail-closed-secret-redaction.md)）。把配置面提供给一个网络之所以站得住，只因为密钥已经不可能再随一份被描述的值流出。
+
 ## 测试
 
-`packages/client/connection/tests/node-half.host.spec.ts` 用同一个已声明授权钉住两种模式：既有场景继续证明默认下每个特权方法都回 403、而普通读取通过；与它配对的新场景证明在 `trusted-hosts` 下这些方法能抵达载体，而未声明的 Host 在同样这些方法上仍回 403——因此这次放宽是被栅栏约束的，而不是取代了栅栏。
+`packages/client/connection/tests/node-half.host.spec.ts` 用同一个已声明授权钉住三个位置：既有场景继续证明默认下每个特权方法都回 403、而普通读取通过；与它配对的场景证明在 `trusted-hosts` 下这些方法能抵达载体，而未声明的 Host 在同样这些方法上仍回 403，因此这次放宽是被栅栏约束的、而非取代了栅栏；第三个场景在 `trusted-hosts` 下注册一个带 `authority: 'loopback'` 的通用通道与一个共享 interceptor，证明两者仍然拒绝那个已声明授权、且两个 handler 都没有运行。

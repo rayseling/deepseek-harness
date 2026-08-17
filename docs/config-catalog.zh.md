@@ -409,7 +409,9 @@ export interface ConnectionConfig {
   trustedHosts?: string[]
   /**
    * Which Host authorities may reach the privileged methods
-   * ({@link PRIVILEGED_METHODS}) and any `authority: 'loopback'` channel.
+   * ({@link PRIVILEGED_METHODS}). A generic Connection channel declaring
+   * `authority: 'loopback'` is unaffected — that is its author's requirement,
+   * and no deployment setting relaxes it.
    *
    * `loopback` (the default) admits only a loopback Host, so the
    * configuration plane stays same-machine however wide the carrier binds.

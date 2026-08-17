@@ -29,7 +29,7 @@ This supersedes the CLI half of [web bind address](../feature/2026-07-22-web-bin
 
 `dsh web` reaches a browser on another machine only through a composition that opts in. The CLI's flag family is unchanged — `--host`, `--port`, and `--trusted-host` — and only one `--host` value is gone. An operator who followed the old help text gets a usage error naming the reason, not a silent loopback bind.
 
-A browser on such a deployment does boot: ids mint without a secure context ([insecure-origin uuid minting](../bug-fix/2026-08-17-insecure-origin-uuid-minting.md)), which is a separate defect this decision predates. The privileged-method pin still keeps the configuration plane loopback-only there, so a remote browser can converse and run tools but not reconfigure the deployment.
+A browser on such a deployment does boot: ids mint without a secure context ([insecure-origin uuid minting](../bug-fix/2026-08-17-insecure-origin-uuid-minting.md)), which is a separate defect this decision predates. The privileged-method default still keeps the configuration plane loopback-only there, so a remote browser can converse and run tools but not reconfigure the deployment.
 
 Restoring a CLI flag for all-interfaces binding is conditional on an authentication layer for the Web carrier, which the connection package records as deferred work.
 

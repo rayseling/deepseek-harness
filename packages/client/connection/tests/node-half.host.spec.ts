@@ -224,6 +224,67 @@ describe('connection node half', () => {
     await dispose()
   })
 
+  it('leaves a generic channel declaring loopback authority pinned under trusted-hosts', async () => {
+    // privilegedAuthority governs PRIVILEGED_METHODS, the set this package
+    // owns. A channel author asking for `authority: 'loopback'` states a
+    // requirement of their own, so no deployment setting relaxes it — neither
+    // on a dedicated channel's route nor through the shared interceptor.
+    const ctx = new Context()
+    const routes: WebRoute[] = []
+    ctx.provide('webServer', fakeHttpServer(routes, []) as WebServer)
+    ctx.provide('apiProxy', {} as unknown as ApiProxy)
+    const fiber = ctx.plugin({ inject: [...inject], apply }, {
+      trustedHosts: ['harness.example'],
+      privilegedAuthority: 'trusted-hosts',
+    })
+    await fiber.await()
+    const connection = ctx.get('connection') as HostConnectionHandle
+    const reached: string[] = []
+    connection.rpc.handle('/pinned', async (endpoint) => {
+      reached.push(endpoint)
+      return { ok: true, value: null }
+    }, { authority: 'loopback' })
+    connection.rpc.intercept(
+      API_PATH,
+      endpoint => endpoint === 'pinned.only',
+      async (endpoint) => {
+        reached.push(endpoint)
+        return { ok: true, value: null }
+      },
+      { authority: 'loopback' },
+    )
+    const body: ClientRequest = {
+      type: 'client-request',
+      rpcId: RpcId('pinned'),
+      method: 'ping',
+      payload: {},
+    }
+    // Dedicated channel route.
+    const dedicated = fakeResponse()
+    await routes.find(route => route.path === '/pinned')!.handler(
+      fakePost({ host: 'harness.example' }, '/pinned/ping', body),
+      dedicated.response,
+    )
+    expect(dedicated.state.status).toBe(403)
+    // Shared /api interceptor.
+    const shared = fakeResponse()
+    await routes.find(route => route.path === API_PATH)!.handler(
+      fakePost({ host: 'harness.example' }, `${API_PATH}/pinned.only`, { ...body, method: 'pinned.only' }),
+      shared.response,
+    )
+    expect(shared.state.status).toBe(403)
+    // Neither handler ran; the same authority reaches both over loopback.
+    expect(reached).toEqual([])
+    const allowed = fakeResponse()
+    await routes.find(route => route.path === '/pinned')!.handler(
+      fakePost({ host: '127.0.0.1:3080' }, '/pinned/ping', body),
+      allowed.response,
+    )
+    expect(allowed.state.status).toBe(200)
+    expect(reached).toEqual(['ping'])
+    await fiber.dispose()
+  })
+
   it('passes loopback and declared-authority requests through to the bridge', async () => {
     const { routes, dispose } = await mounted({ trustedHosts: ['harness.example:3080', '192.168.1.5'] })
     // Loopback, no browser markers (curl shape): the fence passes; the carrier

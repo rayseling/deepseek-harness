@@ -78,7 +78,7 @@ Resolver-owned `session-not-found` and `agent-busy` errors remain stable because
 
 ## Privileged authority
 
-Connection must enforce privileged endpoint authority before choosing the Typert interceptor or API Proxy fallback. The check must recognize both legacy dotted names and Remote slash endpoints and keep these migrated operations loopback-only:
+Connection must enforce privileged endpoint authority before choosing the Typert interceptor or API Proxy fallback. The check must recognize both legacy dotted names and Remote slash endpoints and keep these migrated operations at the same authority as their unmigrated names (loopback-only by default):
 
 - `agentPresets/readDocument`, `agentPresets/copy`, and `agentPresets/remove`;
 - `credentials/describe`, `credentials/set`, and `credentials/unset`.
@@ -108,7 +108,7 @@ The final commit generates every `/remote` artifact from a clean state, updates 
 - Every migration-table method is callable through its listed `ctx.remote` Service and has no production legacy API Proxy route, schema, map row, client stub, or invocation.
 - Existing methods with matching signatures carry `@Remote` directly; every added method performs the adaptation stated in the table and no identity `remote*` wrapper remains.
 - Agent/Session integration tests prove the shared lookup outcomes, and subagent interrupt tests prove no cold resume occurs.
-- Privileged migrated endpoints reject trusted non-loopback callers and accept loopback callers before either dispatch path runs.
+- Privileged migrated endpoints resolve their authority exactly as the unmigrated names do — the authorities `privilegedAuthority` selects, loopback-only by default ([the configuration plane follows trustedHosts on request](../../implemented/architecture/2026-08-17-configuration-plane-authority.md)) — before either dispatch path runs. Non-escalation is measured against that field, not against loopback as a constant.
 - Client behavior and immediate state settlement remain equivalent for every migrated call, including cancellation where supported.
 - Deferred methods remain on the API Proxy with their existing behavior.
 - A clean generation/build produces and consumes every selected Remote contribution, and focused tests plus final repository gates pass.
