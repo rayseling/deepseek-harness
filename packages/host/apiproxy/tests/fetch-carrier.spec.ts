@@ -803,3 +803,51 @@ describe('resolveBase', () => {
     }
   })
 })
+
+describe('rpcId minting', () => {
+  /** Collect the rpcIds this client mints, in request order. */
+  function mintedIds(c: InProcessApiClient): { ids: string[]; unsubscribe: () => void } {
+    const ids: string[] = []
+    const unsubscribe = c.subscribeEnvelopes((batch) => {
+      for (const message of batch) {
+        if (message.type === 'client-request') ids.push(message.rpcId)
+      }
+    })
+    return { ids, unsubscribe }
+  }
+
+  it('mints on an insecure origin, where randomUUID is undefined', async () => {
+    // A page served over plain HTTP from a LAN address is not a secure context,
+    // so the environment exposes getRandomValues and nothing else.
+    vi.stubGlobal('crypto', {
+      getRandomValues(bytes: Uint8Array) {
+        return bytes.fill(0)
+      },
+    })
+    try {
+      const c = client()
+      const { ids, unsubscribe } = mintedIds(c)
+      await c.sessions.list({})
+      await new Promise((resolve) => { setTimeout(resolve, 0) })
+      // All-zero randomness still carries the version-4 and variant bits.
+      expect(ids).toEqual(['00000000-0000-4000-8000-000000000000'])
+      unsubscribe()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('mints distinct version-4 ids from real randomness', async () => {
+    const c = client()
+    const { ids, unsubscribe } = mintedIds(c)
+    await c.sessions.list({})
+    await c.host.describe({})
+    await new Promise((resolve) => { setTimeout(resolve, 0) })
+    expect(ids).toHaveLength(2)
+    for (const id of ids) {
+      expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
+    }
+    expect(new Set(ids).size).toBe(2)
+    unsubscribe()
+  })
+})

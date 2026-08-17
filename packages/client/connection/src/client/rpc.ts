@@ -1,12 +1,12 @@
 /** Browser caller for generic Connection unary RPC channels. */
 
 import {
+  randomUuid,
   RpcId,
   serverResponseSchema,
   type ClientRequest,
 } from '@deepseek-ai/dsh-host-apiproxy/api'
 import type { ClientConnectionRpc } from '../rpc.ts'
-import { randomUuid } from './random-uuid.ts'
 
 const INTERNAL_BASE = 'http://dsh.internal'
 const CHANNEL_PATTERN = /^\/[A-Za-z0-9._~-]+$/

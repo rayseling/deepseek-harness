@@ -10,6 +10,7 @@ import type { ApiProxy, HostFrame, MuxFrame } from '../api/index.ts'
 import type { RequestPayload, ResponseValue, RpcMethodMap } from '../api/rpc-map.ts'
 import type { ClientRequest, ClientResponse, RpcMessage, RpcReceipt, RpcRequest, RpcResponse, ServerRequest } from '../api/rpc.ts'
 import { RpcId } from '../api/rpc.ts'
+import { randomUuid } from '../api/random-uuid.ts'
 import type { Wire } from '../api/rpc.schema.ts'
 import { rpcReceiptSchema, serverRequestSchema, serverResponseSchema } from '../api/rpc.schema.ts'
 import { hostFrameSchema, muxFrameSchema } from '../api/events.schema.ts'
@@ -296,8 +297,10 @@ export abstract class AbstractApiClient implements IApiClient {
   }
 
   protected mintRpcId(): RpcId {
-    // crypto.randomUUID is a Web API (browser + Node ≥19): keeps this base platform-neutral.
-    return RpcId(crypto.randomUUID())
+    // getRandomValues, not randomUUID: this base runs in browser pages, and
+    // randomUUID is secure-context-only — undefined on a plain-HTTP LAN origin,
+    // where every call below would throw before the app booted.
+    return RpcId(randomUuid())
   }
 
   /**

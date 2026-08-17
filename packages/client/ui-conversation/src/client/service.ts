@@ -12,6 +12,11 @@ import type { Context } from '@deepseek-ai/cordis'
 // Type-only imports: a plugin-to-plugin value import is a bundle purity
 // error, so scope resolution goes through the sessions service (scopeOf
 // method) instead of the standalone helper.
+// Value import of an inline-safe wire layer, which the client bundle purity
+// gate admits (scripts/client-bundle-purity.spec.ts): randomUuid mints ids from
+// getRandomValues because randomUUID is secure-context-only and this composer
+// runs in pages served over plain HTTP from a LAN address.
+import { randomUuid } from '@deepseek-ai/dsh-host-apiproxy/api'
 import type { ISessions, SessionFace, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ImageAttachmentRef, ImageMediaType } from '@deepseek-ai/dsh-attachment'
 import type { ComposerAttachment } from './contract/slots.ts'
@@ -62,7 +67,7 @@ export interface IConversation {
 function browserDraftAttachment(file: File): ComposerAttachment {
   return {
     kind: 'image',
-    id: crypto.randomUUID() as DraftAttachmentId,
+    id: randomUuid() as DraftAttachmentId,
     previewUrl: URL.createObjectURL(file),
     file,
   }
