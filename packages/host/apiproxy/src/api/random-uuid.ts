@@ -6,7 +6,8 @@
  * reverse-proxied host — is not a secure context, so the method is `undefined`
  * there and the first minted id throws before the app can boot. `getRandomValues`
  * carries no such restriction and is the one CSPRNG primitive browsers and Node
- * both always expose, so every id minted in a browser page comes from here.
+ * both always expose, so the browser carriers' correlation ids and the
+ * composer's draft-attachment ids mint through here.
  *
  * api/ contract layer: zero Node dependencies, importable from the browser.
  */

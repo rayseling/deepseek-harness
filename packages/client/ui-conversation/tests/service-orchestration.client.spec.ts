@@ -103,6 +103,28 @@ describe('ConversationController', () => {
     await b.runtime.dispose()
   })
 
+  it('mints draft ids on an insecure origin, where randomUUID is undefined', async () => {
+    const b = await bench()
+    const created = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:insecure')
+    // The plain-HTTP LAN origin exposes getRandomValues and nothing else.
+    vi.stubGlobal('crypto', {
+      getRandomValues(bytes: Uint8Array) {
+        return bytes.fill(0)
+      },
+    })
+    try {
+      const [attachment] = b.root.createDraftImages([
+        new File([Uint8Array.of(1)], 'a.png', { type: 'image/png' }),
+      ])
+      // All-zero randomness still carries the version-4 and variant bits.
+      expect(attachment?.id).toBe('00000000-0000-4000-8000-000000000000')
+    } finally {
+      vi.unstubAllGlobals()
+      created.mockRestore()
+    }
+    await b.runtime.dispose()
+  })
+
   it('validates every MIME type before allocating previews', async () => {
     const b = await bench()
     const created = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:preview')

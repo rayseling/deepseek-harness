@@ -15,8 +15,10 @@ import type { Context } from '@deepseek-ai/cordis'
 // Value import of an inline-safe wire layer, which the client bundle purity
 // gate admits (scripts/client-bundle-purity.spec.ts): randomUuid mints ids from
 // getRandomValues because randomUUID is secure-context-only and this composer
-// runs in pages served over plain HTTP from a LAN address.
-import { randomUuid } from '@deepseek-ai/dsh-host-apiproxy/api'
+// runs in pages served over plain HTTP from a LAN address. The exact-module
+// subpath, not the /api barrel: the barrel evaluates the protocol zod schemas,
+// which would ride into this bundle for one seven-line helper.
+import { randomUuid } from '@deepseek-ai/dsh-host-apiproxy/api/random-uuid'
 import type { ISessions, SessionFace, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ImageAttachmentRef, ImageMediaType } from '@deepseek-ai/dsh-attachment'
 import type { ComposerAttachment } from './contract/slots.ts'

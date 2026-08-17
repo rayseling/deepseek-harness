@@ -981,6 +981,30 @@ describe('FixtureApiClient (protocol-level fake carrier)', () => {
     expect(() => (client as unknown as { doFetch(): Promise<Response> }).doFetch()).toThrow(/doFetch must be unreachable/)
   })
 
+  it('mints on an insecure origin, where randomUUID is undefined', async () => {
+    // Construct first with real crypto: the fixture world's seeded history
+    // still mints through dsh-llm's createMessage, the recorded remaining
+    // secure-context gap. The stub then models the plain-HTTP LAN origin —
+    // getRandomValues alone — for the live-request minting under test.
+    const client = new FixtureApiClient()
+    vi.stubGlobal('crypto', {
+      getRandomValues(bytes: Uint8Array) {
+        return bytes.fill(0)
+      },
+    })
+    const tapped: RpcMessage[] = []
+    client.subscribeEnvelopes(batch => tapped.push(...batch))
+    const response = await client.sessions.list({})
+    expect(response.result.ok).toBe(true)
+    await vi.waitFor(() => {
+      const request = tapped.find(message => message.type === 'client-request')
+      // All-zero randomness still carries the version-4 and variant bits. The
+      // id comes from the fake carrier's own rpcRequest minting, so reverting
+      // fixture.ts to crypto.randomUUID fails here.
+      expect(request?.rpcId).toBe('00000000-0000-4000-8000-000000000000')
+    })
+  })
+
   it('mints request ids, taps all four full forms, and never touches doFetch', async () => {
     const client = new FixtureApiClient()
     const tapped: RpcMessage[] = []

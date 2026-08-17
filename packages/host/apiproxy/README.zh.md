@@ -62,7 +62,7 @@ Workspace 列表与 Session 列表是相互独立的重连基线。`workspace.cr
 
 ## 载体层（`/client` + 根路径）
 
-`AbstractApiClient` 持有全部协议不变量：签发 rpcId、包装／解包信封、Zod 解析、SSE 帧解码、一元请求超时，以及按微任务批处理的信封观测（`subscribeEnvelopes`）；平台子类只提供 `doFetch` 传输环节。`InProcessApiClient` 以 `toFetchHandler(api)` 为基础，仍是同构接点：它运行完整的协议序列化与校验路径而不经过网络，供需要该路径的调用方和载体测试使用。产品的 `dsh --profile headless` 是直连 core 的入口，不挂载本包。
+`AbstractApiClient` 持有全部协议不变量：签发 rpcId、包装／解包信封、Zod 解析、SSE 帧解码、一元请求超时，以及按微任务批处理的信封观测（`subscribeEnvelopes`）；平台子类只提供 `doFetch` 传输环节。签发经由 `api/` 层导出的 `randomUuid()`（基于 `crypto.getRandomValues` 的 RFC 4122 v4），因为 `crypto.randomUUID` 只存在于安全上下文，而经明文 HTTP 从非回环 authority 提供的页面没有安全上下文；精确模块子路径 `./api/random-uuid` 的存在使浏览器 bundle 可以只取该助手，而不在求值 `/api` 总 barrel 时构造协议 schema。该助手覆盖载体关联 id 以及 client 插件经它铸造的 id，并非页面里的一切 id——`dsh-llm` 的消息工厂仍要求安全上下文，它只经 connection 包的 fixture 载体抵达页面（[决策](../../../.agents/notes/implemented/bug-fix/2026-08-17-insecure-origin-uuid-minting.md)）。`InProcessApiClient` 以 `toFetchHandler(api)` 为基础，仍是同构接点：它运行完整的协议序列化与校验路径而不经过网络，供需要该路径的调用方和载体测试使用。产品的 `dsh --profile headless` 是直连 core 的入口，不挂载本包。
 
 ## 模型体验
 

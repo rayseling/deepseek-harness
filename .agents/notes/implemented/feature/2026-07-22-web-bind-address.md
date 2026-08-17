@@ -12,7 +12,7 @@ The HTTP carrier also hides the bind address inside `startWebServer()`, so alter
 
 ## Decision
 
-`dsh web` binds `127.0.0.1` by default. The CLI accepts `--host 0.0.0.0` as the explicit all-interface mode and rejects other values so its network modes remain a small, deliberate contract. All-interface mode keeps printing the loopback URL and, when available, the first external IPv4 URL.
+`dsh web` binds `127.0.0.1` by default. All-interface mode is the webserver row's `host: '0.0.0.0'`, enabled through a profile patch or a programmatic composition; the CLI itself now refuses `--host 0.0.0.0` as a usage error until remote access has an authentication layer, and rejects every other value so its network modes remain a small, deliberate contract. All-interface mode keeps printing the loopback URL and, when available, the first external IPv4 URL — and a browser on that URL can boot, since ids mint without a secure context ([insecure-origin uuid minting](../bug-fix/2026-08-17-insecure-origin-uuid-minting.md)).
 
 `WebServerOptions.host` is required. The HTTP carrier passes that value to `node:http` without supplying a fallback, leaving each shell responsible for its bind policy. Programmatic carrier consumers may select another hostname or address directly.
 
@@ -26,4 +26,4 @@ The HTTP carrier also hides the bind address inside `startWebServer()`, so alter
 
 ## Consequences
 
-Local `dsh web` starts remain reachable at `http://127.0.0.1:3080`; a browser on another machine must opt in with `dsh web --host 0.0.0.0`. The CLI does not yet expose custom interface addresses or IPv6 modes, while programmatic carrier consumers retain that flexibility. Server tests pin both loopback and all-interface forwarding into the Node listen boundary, and the web smoke continues to exercise the default CLI path.
+Local `dsh web` starts remain reachable at `http://127.0.0.1:3080`; a browser on another machine must opt in by patching the webserver row to `host: '0.0.0.0'` — the CLI flag is refused. The CLI does not expose all-interface, custom interface address, or IPv6 modes, while programmatic carrier consumers retain that flexibility. Server tests pin both loopback and all-interface forwarding into the Node listen boundary, and the web smoke continues to exercise the default CLI path.

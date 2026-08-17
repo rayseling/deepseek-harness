@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-17-insecure-origin-uuid-minting.md
-2026-08-17-insecure-origin-uuid-minting.md: e09bf8fccd9568ee293df1662202081bdd231661
-2026-08-17-insecure-origin-uuid-minting.zh.md: 32ab1ad4c94c0d22d3168cca425a4aff805f98d8
+2026-08-17-insecure-origin-uuid-minting.md: 8cfcd19e7c2d77f8da4a70ed41aa717581650126
+2026-08-17-insecure-origin-uuid-minting.zh.md: 1c12128911ee7d3caad6956e11b10f9d3e42785c
