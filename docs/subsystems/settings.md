@@ -159,11 +159,13 @@ interface SettingsDescribeOptions {
 }
 ```
 
-Redaction is structural and fails closed: a described value cannot carry a `role('secret')` the redactor did not account for ([fail-closed secret redaction](../../.agents/notes/implemented/architecture/2026-08-17-fail-closed-secret-redaction.md)). A browser page is a wire whichever authority served it, and a deployment can answer the configuration plane from its declared `trustedHosts` rather than loopback alone ([configuration-plane authority](../../.agents/notes/implemented/architecture/2026-08-17-configuration-plane-authority.md)). The walker descends `object`, `dict`, and `array`, removing each declared secret and listing it in `secrets`. Where it cannot tell which position a concrete value occupies (a `union`, `intersect`, `transform`, or `tuple` whose subtree declares a secret; a secret behind a `lazy` builder; a malformed value where a container belongs) it withholds that subtree from `value`, `base`, and `user` and records the position in `unprovable`. A branch set that declares no secret — a literal enum among them — passes through unchanged, and so do keys the stored document holds but the schema never declared: redaction covers declared positions only.
+Redaction is structural and fails closed: a described value cannot carry a `role('secret')` the redactor did not account for ([fail-closed secret redaction](../../.agents/notes/implemented/architecture/2026-08-17-fail-closed-secret-redaction.md)). A browser page is a wire whichever authority served it, and a deployment can answer the configuration plane from its declared `trustedHosts` rather than loopback alone ([configuration-plane authority](../../.agents/notes/implemented/architecture/2026-08-17-configuration-plane-authority.md)).
 
-The serialized schema is a wire value too, so `redactSecrets` sanitizes the envelope: `default` and `initial` are dropped from every `role: 'secret'` ref, and the flat `refs` table reaches even the secret nodes the value walker cannot. A form renders a write-only input for a secret field without receiving the default declared for it.
+The walker descends `object`, `dict`, and `array`, removing each declared secret and listing it in `secrets`. Where it cannot tell which position a concrete value occupies (a `union`, `intersect`, `transform`, or `tuple` whose subtree declares a secret; a secret behind a `lazy` builder; a malformed value where a container belongs) it withholds that subtree from `value`, `base`, and `user` and records the position in `unprovable`. A branch set that declares no secret — a literal enum among them — passes through unchanged, and so do keys the stored document holds but the schema never declared: redaction covers declared positions only.
 
-Withholding is not refusal. The wire view carries `unprovable` beside the redacted layers, and the surface holding it decides how to present a namespace whose value is missing subtrees the redactor could not prove secret-free; presenting it as not editable is the intended answer, which the seam does not enforce.
+The serialized schema is a wire value too, so `describe` runs it through `sanitizeSchemaEnvelope`: `default` and `initial` are dropped from every `role: 'secret'` ref, and the flat `refs` table reaches even the secret nodes the value walker cannot. A form renders a write-only input for a secret field without receiving the default declared for it.
+
+Withholding is not refusal. The descriptor and its wire view both carry `unprovable` beside the redacted layers, and the surface holding it decides how to present a namespace whose value is missing subtrees the redactor could not prove secret-free; presenting it as not editable is the intended answer, which the seam does not enforce.
 
 `role('secret')` on a dict element makes every value in that dict write-only. `dsh-llm-pi-ai` declares its profile `headers` that way (a header value carries nothing that marks it a credential), so the key names ride `secrets` for a form to render while no value comes back; `apiKeyEnv` reference names stay readable, because naming a credential is not holding one. Requests keep using the stored values — only the described view is stripped.
 
@@ -267,7 +269,7 @@ async replace(ns: SettingsNamespace, section: object, expectedRevision?: number)
 async mutate(ns: SettingsNamespace, ops: readonly SettingsPathOp[], expectedRevision?: number): Promise<void>
 ```
 
-Source: [`packages/settings/settings/src/index.ts:350`](../../packages/settings/settings/src/index.ts)
+Source: [`packages/settings/settings/src/index.ts:357`](../../packages/settings/settings/src/index.ts)
 
 <a id="settings-events"></a>
 

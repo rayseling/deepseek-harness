@@ -16,7 +16,11 @@ Status: implemented
 
 walker 对自己无法下降的东西 fail closed。它的 `default:` 分支现在会追问：该节点的子树里是否任何位置存在 secret role——沿着全部嵌套关系（`inner`、`list`、`dict`）查找；若存在，该子树从值中扣下，其路径记录进新增的 `unprovable` 列表。标量叶子仍照原样返回，不含 secret 的分支集合同样如此——判据是子树的内容而不是节点的类型，因为字面量枚举正是最常见的 `union`，按类型 fail closed 会扣下大部分配置。
 
-`tuple` 加入了 README 点名的那三种容器。它有同样的缺口，原因也相同：walker 从未下降过 `list`。
+`tuple` 加入了 README 点名的那三种容器。它有同样的缺口，原因也相同：walker 从未下降过 `list`。另有两个位置就同一个问题 fail closed。`lazy` 的子节点位于它的 `builder` 之后，因此会调用该工厂来追问其下是否藏着 secret——schemastery 的 schema 是可调用的，所以结果读出来是 `function` 而不是 `object`，而一个抛异常的 builder 按「藏有 secret」计。以及本该是容器的位置上出现的畸形值（dict 的位置给了字符串）会被扣下而不是原样放行，因为 walker 无法定位其中的 secret 位置；同样的值若所属 schema 里没有任何 secret 则仍然放行，正是这一点让普通的畸形配置对那个需要修正它的表单保持可见。
+
+序列化后的 schema 同样是一份上线的值。`sanitizeSchemaEnvelope` 会分离 `schema.toJSON()`，并从每个 `role: 'secret'` 的 ref 上删除 `default` 与 `initial`；`describe` 在脱敏时应用它，于是 secret 字段声明的默认值不再越过值脱敏随信封上线。信封的 `refs` 表是扁平的，这正是它能覆盖到值 walker 到不了的那些 secret 节点的原因：埋在 union 分支里的节点仍然是它自己的一条 ref。
+
+`unprovable` 是被发布出去的，而不是算完就丢：它随 `SettingsDescriptor` 与 wire 视图 `SettingsNamespaceView` 一起出去，为空时省略，因此配置界面可以把这样的 namespace 呈现为不可编辑，而不是去信任一份带着无声窟窿的值。
 
 `headers` 在协议上变为只写：其元素带 `role('secret')`，所以脱敏后的 `describe()` 扣下每一个值，而键名走 `secrets` 附带清单——正是这一点让表单能为每个 header 渲染只写输入框。真实请求继续使用真实值，只有被描述的视图被剥离。`apiKeyEnv` 的引用名保持可读，因为引用名不是凭据。
 
@@ -34,10 +38,16 @@ walker 对自己无法下降的东西 fail closed。它的 `default:` 分支现�
 
 配置界面不再显示某个 pi-ai 提供方已有的 header 值，而是为每个键显示只写输入框。曾把凭据存进 `headers` 的操作者，路由照常工作，而那条凭据不再能从页面上读到。要让表单显示一条凭据的名字，`apiKeyEnv` 仍是那个办法。
 
-`RedactedValue` 新增了必填成员 `unprovable`，因此每个解构该结果的调用方都会看到它。仍然延期的是暴露的那一半——一个 `describeForWire()`，它会直接拒绝不可证明的 namespace，并净化序列化后的 schema 信封（后者仍会带上 secret 字段的 `.default(...)`）。
+`RedactedValue` 新增了必填成员 `unprovable`，因此每个解构该结果的调用方都会看到它。仍然延期的是「拒绝」本身：扣下一棵子树并报出它的位置，与拒绝该 namespace 并不是一回事，而今天除了把 `unprovable` 带出去之外，没有任何东西依据它行动。
+
+有一条通道在构造上仍然开着，并已记入 settings 的 README：schema 未声明的键会原样上线，因为对象 walker 会保留 schema 之外的键，而 schema 从未建模过的东西无从分类。凭据应当落在已声明 `role('secret')` 的字段上，或藏在 `apiKeyEnv` 这类引用之后。
 
 ## 测试
 
 `packages/settings/settings/tests/redact.spec.ts` 对两种走不进去的形态都证明了扣下：藏在某个 `union` 分支里的 secret、以及位于 `transform` 之下的 secret，都不出现在值里——断言方式是在序列化后的值里搜索那个真实字符串，而不只是比对结构——并且各自把路径报进 `unprovable`。配套用例钉住让这个判据值得存在的非回归：一个字面量枚举 `union` 与一个普通数字并列时原样返回，`secrets` 与 `unprovable` 都为空。
 
+另有两个用例覆盖第一轮之后才发现的位置：藏在 `lazy` builder 之后的 secret 会被扣下，而其下没有任何 secret 的 `lazy` schema 仍然返回它的值；带 secret 的容器下的畸形值会被扣下并报出两条路径，而同样的畸形若所属 schema 不含 secret 则原样通过。descriptor 层面的用例钉住信封与被发布的成员：脱敏后 describe 的序列化 schema 里不含 secret 的 `.default(...)`（包括声明在某个 union 分支内部的那一个），而普通字段的默认值仍在；未脱敏的内部读取仍然带着它；secret 位于 union 之下的 namespace 会报出 `unprovable`，而干净的 namespace 省略该成员。
+
 `headers` 的保证是对着真实 schema 而非夹具证明的：用 `dsh-llm-pi-ai` 导出的 `Config` 组合出一个 `headers` 含 `Authorization` 与普通 `X-Org` 条目的提供方，脱敏后的 `describe` 值里两个字符串都不存在，而附带清单列出了两个键的路径。
+
+组装后的应用在 `apps/web/tests/remote-configuration-plane.e2e.ts` 中闭合这条回路：一条经 shipped settings provider 自身写入路径植入的 canary 凭据，必须同时不出现在 `settings.describe` 的响应体与真实设置对话框渲染出的 DOM 里，而该提供方的公开邻居字段、它的 `apiKeyEnv` 引用名、以及附带清单里的 secret 槽位都必须在场——因此那条「不存在」的断言不可能空洞地通过。

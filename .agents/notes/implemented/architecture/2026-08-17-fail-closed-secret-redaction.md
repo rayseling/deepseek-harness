@@ -16,7 +16,11 @@ Both were tolerable while the configuration plane answered only a loopback Host.
 
 The walker fails closed on what it cannot descend. Its `default:` case now asks whether a secret role sits anywhere in the node's subtree, following every nesting relation (`inner`, `list`, `dict`); if one does, the subtree is withheld from the value and its path is reported in a new `unprovable` list. A scalar leaf still returns as it is, and so does a branch set with no secret in it — the discriminator is the subtree's contents, not the node's type, because a literal enum is the common `union` and failing closed on the type would withhold most configuration.
 
-`tuple` joins the three containers the README named. It has the same gap for the same reason: the walker never descended `list`.
+`tuple` joins the three containers the README named. It has the same gap for the same reason: the walker never descended `list`. Two further positions fail closed on the same question. A `lazy` child lives behind its `builder`, so the factory is called to ask whether a secret hides under it — a schemastery schema is callable, so the result reads as `function`, not `object`, and a builder that throws counts as hiding one. And a malformed value where a container belongs (a string where the dict should be) is withheld rather than passed through, because the walker cannot address the secret positions inside it; the same value under a schema with no secret in it still passes, which is what keeps ordinary malformed configuration visible to the form that has to fix it.
+
+The serialized schema is a wire value too. `sanitizeSchemaEnvelope` detaches `schema.toJSON()` and drops `default` and `initial` from every `role: 'secret'` ref, and `describe` applies it under redaction, so a secret field's declared default no longer rides the envelope past value redaction. The envelope's `refs` table is flat, which is why this reaches even the secret nodes the value walker cannot: a node buried in a union branch is still its own ref.
+
+`unprovable` is published rather than computed and dropped: it rides `SettingsDescriptor` and the wire view `SettingsNamespaceView`, omitted when empty, so a configuration surface can present such a namespace as not editable instead of trusting a value with silent holes.
 
 `headers` becomes write-only on the wire: its element carries `role('secret')`, so a redacted `describe()` withholds every value while the key names ride the `secrets` sidecar, which is what lets a form render write-only inputs per header. Requests keep using the real values; only the described view is stripped. `apiKeyEnv` reference names stay readable, because a reference name is not a credential.
 
@@ -34,10 +38,16 @@ No described settings value can carry a `role('secret')` the redactor did not ac
 
 A configuration UI no longer shows existing header values for a pi-ai provider; it shows a write-only input per key. An operator who stored a credential in `headers` keeps a working route, and the credential stops being readable from the page. `apiKeyEnv` remains the way to name a credential that a form should show.
 
-`RedactedValue` gains a required `unprovable` member, so every caller destructuring the result sees it. What remains deferred is the surfacing half — a `describeForWire()` that refuses an unprovable namespace outright, and that sanitizes the serialized schema envelope, which still carries a secret field's `.default(...)`.
+`RedactedValue` gains a required `unprovable` member, so every caller destructuring the result sees it. What remains deferred is refusal itself: withholding a subtree and reporting its position is not the same as refusing the namespace, and nothing today acts on `unprovable` beyond carrying it.
+
+One channel stays open by construction and is recorded in the settings README: a key the schema does not declare rides the wire verbatim, because the object walker preserves keys outside the schema and nothing can classify what the schema never modeled. A credential belongs on a declared `role('secret')` field or behind an `apiKeyEnv`-style reference.
 
 ## Testing
 
 `packages/settings/settings/tests/redact.spec.ts` proves the withholding on both unwalked shapes: a secret inside one `union` branch and a secret under a `transform` are absent from the value — asserted by searching the serialized value for the live string, not only by shape — and each reports its path in `unprovable`. A companion case pins the non-regression that makes the discriminator worth having: a literal-enum `union` beside a plain number is returned unchanged, with both `secrets` and `unprovable` empty.
 
+Two more cases cover the positions found after the first pass: a secret behind a `lazy` builder is withheld while a `lazy` schema with nothing secret under it still returns its value, and a malformed value under the secret-bearing containers is withheld with both paths reported while the same malformation under a secret-free schema passes through. Descriptor-level cases pin the envelope and the published member: a secret's `.default(...)` is absent from the serialized schema of a redacted describe (including one declared inside a union branch) while an ordinary field's default survives, the unredacted internal read still carries it, and a namespace whose secret sits under a union reports `unprovable` while a clean namespace omits the member.
+
 The `headers` guarantee is proven against the real schema rather than a fixture: composing `dsh-llm-pi-ai`'s exported `Config` with a provider whose `headers` hold `Authorization` and an ordinary `X-Org` entry, a redacted `describe` value contains neither string while the sidecar lists both key paths.
+
+The assembled application closes the loop in `apps/web/tests/remote-configuration-plane.e2e.ts`: a canary credential seeded through the shipped settings provider's own write path must be absent from both the `settings.describe` body and the rendered DOM of the real Settings dialog, while the provider's public neighbours, its `apiKeyEnv` reference name, and the secret slots in the sidecar are all present — so the absence assertion cannot pass vacuously.

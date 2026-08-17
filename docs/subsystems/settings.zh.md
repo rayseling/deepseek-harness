@@ -159,6 +159,16 @@ interface SettingsDescribeOptions {
 }
 ```
 
+脱敏是结构性的，并且 fail-closed：被描述的值不可能携带一条脱敏器没有交代的 `role('secret')`（[fail-closed 机密脱敏](../../.agents/notes/implemented/architecture/2026-08-17-fail-closed-secret-redaction.md)）。浏览器页面无论由哪个授权提供，都是一条协议边界，而部署方可以让配置平面回应自己声明的 `trustedHosts`，而不只是回环（[配置平面授权](../../.agents/notes/implemented/architecture/2026-08-17-configuration-plane-authority.md)）。
+
+walker 会下降进 `object`、`dict` 与 `array`，移除其中每个已声明的机密字段并列入 `secrets`。凡是它无法判断具体值落在哪个位置的地方（子树中声明了机密的 `union`、`intersect`、`transform` 或 `tuple`；藏在 `lazy` builder 之后的机密字段；本该是容器却给了畸形值），它会把整棵子树从 `value`、`base` 与 `user` 中扣下，并把该位置记入 `unprovable`。不含机密的分支集合（字面量枚举就是其一）照原样通过；存储文档里有、而 schema 从未声明的键同样照原样通过：脱敏只覆盖已声明的位置。
+
+序列化后的 schema 同样是一份对外传输的值，因此 `describe` 会让它经过 `sanitizeSchemaEnvelope`：每个 `role: 'secret'` ref 上的 `default` 与 `initial` 都被删除，而扁平的 `refs` 表连值 walker 到不了的机密节点也一并覆盖。于是表单能为机密字段渲染只写输入框，而不会收到为它声明的默认值。
+
+扣下不等于拒绝。descriptor 与它的协议视图都会把 `unprovable` 与脱敏后的各层一起送出，持有它的界面自行决定如何呈现这样一个 namespace：它的值缺了若干脱敏器无法证明不含机密的子树。把它呈现为不可编辑是既定答案，而 seam 本身并不强制这一点。
+
+`role('secret')` 落在 dict 元素上，会让该 dict 中每个值都成为只写。`dsh-llm-pi-ai` 就这样声明其 profile 的 `headers`（header 值本身没有任何东西能表明它是凭据），因此键名随 `secrets` 一起送出供表单渲染，而值一概不回传；`apiKeyEnv` 中的引用名仍可读取，因为命名一份凭据不等于持有它。请求依旧使用存储的真实值，被剥离的只是被描述的视图。
+
 ## 变更提交
 
 每次提交的变更——进程内写入或提供方观察到的外部编辑——在新值成为权威值之后发出 `settings/updated (ns, next, prev, source)`，解析值深相等时绝不发出。source 标记区分两条入口路径。
@@ -259,7 +269,7 @@ async replace(ns: SettingsNamespace, section: object, expectedRevision?: number)
 async mutate(ns: SettingsNamespace, ops: readonly SettingsPathOp[], expectedRevision?: number): Promise<void>
 ```
 
-Source: [`packages/settings/settings/src/index.ts:350`](../../packages/settings/settings/src/index.ts)
+Source: [`packages/settings/settings/src/index.ts:357`](../../packages/settings/settings/src/index.ts)
 
 <a id="settings-events"></a>
 
