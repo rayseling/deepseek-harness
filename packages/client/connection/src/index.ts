@@ -57,26 +57,47 @@ export interface ConnectionConfig {
    * that is not a bare, canonical authority fails the plugin load.
    */
   trustedHosts?: string[]
+  /**
+   * Which Host authorities may reach the privileged methods
+   * ({@link PRIVILEGED_METHODS}) and any `authority: 'loopback'` channel.
+   *
+   * `loopback` (the default) admits only a loopback Host, so the
+   * configuration plane stays same-machine however wide the carrier binds.
+   * `trusted-hosts` admits every authority in {@link ConnectionConfig.trustedHosts}
+   * — the same fence the ordinary methods pass — which lets a remote browser
+   * read and write settings, credential references, and agent presets, and
+   * pop native dialogs on the Host's screen.
+   *
+   * `trusted-hosts` is a deliberate exposure, not a convenience: the fence is
+   * a DNS-rebinding defense, not authentication, so anything that can reach
+   * the carrier gains the configuration plane. Set it only where the network
+   * is trusted or an authenticating proxy sits in front.
+   */
+  privilegedAuthority?: 'loopback' | 'trusted-hosts'
   /** Maximum buffered JSON body for every `/api` request. */
   maxRequestBodyBytes?: number
 }
 
 export const Config: z<ConnectionConfig> = z.object({
   trustedHosts: z.array(String).default([]),
+  privilegedAuthority: z.union(['loopback', 'trusted-hosts'] as const).default('loopback'),
   maxRequestBodyBytes: z.natural().min(1).default(DEFAULT_MAX_REQUEST_BODY_BYTES),
 })
 
 /**
- * Methods gated to loopback even on a trusted-host deployment. Native dialogs
- * act on the host machine; the settings and credential domains mutate the
- * user's configuration and secret store, and READING them is equally
- * privileged — `settings.describe` returns every exposed namespace's
- * configuration and `credentials.describe` reports whether an arbitrary
- * environment-variable name is configured and where from, which is
- * reconnaissance no anonymous caller should have. `trustedHosts` is a
- * DNS-rebinding fence, explicitly not authentication, so the whole
- * configuration plane stays loopback-same-origin until a real authentication
- * layer exists. `llm.discoverModels` belongs to that plane on both counts: it
+ * The configuration plane: methods whose reachable authorities are chosen by
+ * {@link ConnectionConfig.privilegedAuthority} rather than by the ordinary
+ * fence, and which a `loopback` deployment keeps same-machine however wide the
+ * carrier binds. Native dialogs act on the host machine; the settings and
+ * credential domains mutate the user's configuration and secret store, and
+ * READING them is equally privileged — `settings.describe` returns every
+ * exposed namespace's configuration and `credentials.describe` reports whether
+ * an arbitrary environment-variable name is configured and where from, which
+ * is reconnaissance no anonymous caller should have. `trustedHosts` is a
+ * DNS-rebinding fence, explicitly not authentication, which is why loopback is
+ * the default and why widening this set to a network is a deployment's
+ * explicit choice rather than a consequence of binding wide.
+ * `llm.discoverModels` belongs to that plane on both counts: it
  * carries a draft credential, and it makes the HOST issue a GET to a URL the
  * caller chose and reports back the status or the parsed body — an anonymous
  * LAN caller would have a probe for whatever the host can reach and the
@@ -135,7 +156,12 @@ export function apply(ctx: Context, config?: ConnectionConfig): void {
   // silently authorizing its hostname prefix at request time.
   for (const entry of trustedHosts) assertTrustedAuthority(entry)
   if (ctx.get('apiProxy') !== undefined) assertImageBodyCapacity(ctx, maxRequestBodyBytes)
-  const connection = new HostConnectionService(ctx, trustedHosts)
+  // The configuration plane's own trust list: empty pins it to loopback, and
+  // the deployment's authorities widen it to whatever the ordinary methods
+  // already reach. One value drives both planes that gate on it — the /api
+  // privileged-method check below and `authority: 'loopback'` channels.
+  const privilegedHosts = (config?.privilegedAuthority ?? 'loopback') === 'trusted-hosts' ? trustedHosts : []
+  const connection = new HostConnectionService(ctx, trustedHosts, privilegedHosts)
   const fetchHandler = connection.createSharedFetchHandler(API_PATH, {
     async fetch(request) {
       const pathname = new URL(request.url).pathname
@@ -144,7 +170,7 @@ export function apply(ctx: Context, config?: ConnectionConfig): void {
         : undefined
       if (method !== undefined
         && PRIVILEGED_METHODS.has(method)
-        && !isTrustedApiRequest(request, [])) {
+        && !isTrustedApiRequest(request, privilegedHosts)) {
         return new Response('forbidden', { status: 403 })
       }
       if (request.method === 'GET' && (pathname === MUX_EVENTS_PATH || pathname === HOST_EVENTS_PATH)) {

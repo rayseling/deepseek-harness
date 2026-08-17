@@ -407,6 +407,23 @@ export interface ConnectionConfig {
    * that is not a bare, canonical authority fails the plugin load.
    */
   trustedHosts?: string[]
+  /**
+   * Which Host authorities may reach the privileged methods
+   * ({@link PRIVILEGED_METHODS}) and any `authority: 'loopback'` channel.
+   *
+   * `loopback` (the default) admits only a loopback Host, so the
+   * configuration plane stays same-machine however wide the carrier binds.
+   * `trusted-hosts` admits every authority in {@link ConnectionConfig.trustedHosts}
+   * — the same fence the ordinary methods pass — which lets a remote browser
+   * read and write settings, credential references, and agent presets, and
+   * pop native dialogs on the Host's screen.
+   *
+   * `trusted-hosts` is a deliberate exposure, not a convenience: the fence is
+   * a DNS-rebinding defense, not authentication, so anything that can reach
+   * the carrier gains the configuration plane. Set it only where the network
+   * is trusted or an authenticating proxy sits in front.
+   */
+  privilegedAuthority?: 'loopback' | 'trusted-hosts'
   /** Maximum buffered JSON body for every `/api` request. */
   maxRequestBodyBytes?: number
 }

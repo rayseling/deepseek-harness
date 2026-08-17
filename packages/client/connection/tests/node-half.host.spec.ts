@@ -74,7 +74,7 @@ function fakeResponse(): { response: ServerResponse; state: { status?: number; b
   return { response, state }
 }
 
-async function mounted(config?: { trustedHosts?: string[] }): Promise<{
+async function mounted(config?: { trustedHosts?: string[]; privilegedAuthority?: 'loopback' | 'trusted-hosts' }): Promise<{
   routes: WebRoute[]
   upgrades: WebUpgradeRoute[]
   dispose: () => Promise<void>
@@ -189,6 +189,38 @@ describe('connection node half', () => {
     const read = fakeResponse()
     await routes[0]!.handler(fakeRequest({ host: 'harness.example' }), read.response)
     expect(read.state.status).not.toBe(403)
+    await dispose()
+  })
+
+  it('admits the configuration plane from declared authorities under privilegedAuthority trusted-hosts', async () => {
+    // The deployment's explicit opt-in: the same declared authority that
+    // already reaches ordinary methods now also reaches the configuration
+    // plane, so a remote browser can read and write settings. The default
+    // above is what keeps this off.
+    const { routes, dispose } = await mounted({
+      trustedHosts: ['harness.example'],
+      privilegedAuthority: 'trusted-hosts',
+    })
+    for (const method of [
+      'settings.describe', 'settings.update', 'credentials.set', 'llm.discoverModels',
+      'host.pickDirectory', 'agentPreset.read',
+    ]) {
+      const admitted = fakeResponse()
+      await routes[0]!.handler(
+        fakeRequest({ host: 'harness.example' }, `${API_PATH}/${method}`),
+        admitted.response,
+      )
+      // Past the fence: the empty proxy answers at the carrier level instead.
+      expect(admitted.state.status).not.toBe(403)
+    }
+    // Widening names authorities; it does not stop being a fence. An
+    // undeclared Host is still refused on the same methods.
+    const rebound = fakeResponse()
+    await routes[0]!.handler(
+      fakeRequest({ host: 'evil.example' }, `${API_PATH}/settings.describe`),
+      rebound.response,
+    )
+    expect(rebound.state.status).toBe(403)
     await dispose()
   })
 
