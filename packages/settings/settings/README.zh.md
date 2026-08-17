@@ -41,5 +41,5 @@
 ## 已知限制与暂缓事项
 
 - **单一用户层** — 解析只认识 schema 默认值、一个组合 `base` 与一个用户文档；它尚未记录每个解析值由哪一层提供。
-- **`redactSecrets` 并非一条可被证明的协议边界**：walker 只跟随 `object`/`dict`/`array`，因此只能经由 union、intersection 或 transform 抵达的 `role('secret')` 会被**原样**返回，且 `secrets` 列表为空；而 `schema.toJSON()` 会把 secret 字段的 `.default(...)` 一并带给每个客户端。这两种情况都不会被拒绝；机密无法经由被遍历的容器抵达的 schema，绝不可注册到暴露于协议的 namespace 上。真正的答案是一个 fail-closed 的 `describeForWire()`——它拒绝自己无法证明安全的 schema，并对序列化封装与错误文本做净化——此项暂缓。
+- **`schema.toJSON()` 仍会把 secret 字段的 `.default(...)` 带给每个客户端**，而 `describe` 与 `register` 都不拒绝这样建模的 schema。值本身现在已是 fail-closed：walker 跟随 `object`/`dict`/`array`，而只能经由 `union`、`intersect`、`transform` 或 `tuple` 抵达的 `role('secret')` 会被整棵子树扣下，位置记录在 `unprovable` 中，因此没有任何调用方会收到一份其脱敏无法被证明的值。仍然延期的是暴露的那一半——一个 `describeForWire()`，它会直接拒绝这样的 namespace 而不是带着窟窿把它端出去，并且会净化序列化后的信封与错误文本。
 - **跨进程并发由提供方定义** — seam 仅在进程内按 namespace 串行化写入；跨进程并发按提供方行为收敛（本地文件提供方在写锁下读-改-写，因此 namespace 在并发写入者下不会丢失，同 namespace 冲突按后写胜出解决）。

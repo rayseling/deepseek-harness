@@ -240,7 +240,11 @@ const profile = z.object({
   defaultContextWindow: z.number().step(1).min(1).default(DEFAULT_CONTEXT_WINDOW),
   defaultMaxTokens: z.number().step(1).min(1).default(DEFAULT_MAX_TOKENS),
   defaultInput: z.array(z.union(MODALITIES)).default([...DEFAULT_INPUT]),
-  headers: z.dict(z.string()),
+  // Write-only on the wire: an operator can put `Authorization` or `api-key`
+  // here, and nothing in the value tells a redactor which entry is a
+  // credential, so every entry's value is withheld from a redacted describe
+  // while the key names still ride the secrets sidecar for the form to render.
+  headers: z.dict(z.string().role('secret')),
   reasoning: z.union(THINKING_LEVELS),
   thinkingBudgets,
   cacheRetention: z.union(['none', 'short', 'long']),

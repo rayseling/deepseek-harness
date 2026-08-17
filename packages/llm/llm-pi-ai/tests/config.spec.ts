@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import type z from '@deepseek-ai/schemastery'
+import { redactSecrets } from '@deepseek-ai/dsh-settings'
 import { assertServiceable, Config } from '../src/config.ts'
 
 /** Validate one hand-declared route, with the caller's fields layered onto it. */
@@ -62,5 +64,32 @@ describe('modality schema boundary', () => {
     const absent = configWith({})() as Materialized
     expect(absent.providers['acme-gateway']?.models?.[0]?.input).toEqual([])
     expect(absent.providers['acme-gateway']?.defaultInput).toEqual(['text'])
+  })
+})
+
+describe('headers on the settings wire', () => {
+  it('withholds every header value from a redacted describe while naming the keys', () => {
+    // The credential an operator can put here is indistinguishable from an
+    // ordinary header by value, so the whole dict is write-only on the wire.
+    const value = Config({
+      providers: {
+        'acme-gateway': {
+          api: 'openai-completions',
+          baseURL: 'https://acme.test',
+          models: [{ id: 'm' }],
+          headers: { Authorization: 'Bearer live-token', 'X-Org': 'org-1' },
+        },
+      },
+    })
+    const redacted = redactSecrets(Config as unknown as z<never>, value)
+    const serialized = JSON.stringify(redacted.value)
+    expect(serialized).not.toContain('live-token')
+    expect(serialized).not.toContain('org-1')
+    expect(redacted.secrets.filter(secret => secret.path.includes('headers'))).toEqual([
+      { path: ['providers', 'acme-gateway', 'headers', 'Authorization'], set: true },
+      { path: ['providers', 'acme-gateway', 'headers', 'X-Org'], set: true },
+    ])
+    // Nothing in this schema hides a secret where the walker cannot reach it.
+    expect(redacted.unprovable).toEqual([])
   })
 })

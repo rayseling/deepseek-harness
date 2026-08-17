@@ -96,10 +96,43 @@ describe('redactSecrets', () => {
     ])
   })
 
+  it('withholds a secret the walker cannot reach through a union or transform', () => {
+    // The walker cannot say which branch a concrete value took, so a secret
+    // anywhere under one is withheld rather than returned verbatim.
+    const Union = z.object({
+      auth: z.union([z.object({ token: z.string().role('secret') }), z.object({ anonymous: z.boolean() })]),
+    })
+    const union = redactSecrets(Union as z<never>, { auth: { token: 'live-secret' } })
+    expect(JSON.stringify(union.value)).not.toContain('live-secret')
+    expect(union.value).toEqual({})
+    expect(union.unprovable).toEqual([['auth']])
+    expect(union.secrets).toEqual([])
+
+    const Transformed = z.object({
+      auth: z.transform(z.object({ token: z.string().role('secret') }), inner => inner),
+    })
+    const transformed = redactSecrets(Transformed as z<never>, { auth: { token: 'live-secret' } })
+    expect(JSON.stringify(transformed.value)).not.toContain('live-secret')
+    expect(transformed.unprovable).toEqual([['auth']])
+  })
+
+  it('returns a branch set holding no secret as it is', () => {
+    // Literal enums are the common union; failing closed on the node type
+    // rather than on its contents would withhold most configuration.
+    const Enum = z.object({ mode: z.union(['fast', 'slow'] as const), count: z.number() })
+    const { value, secrets, unprovable } = redactSecrets(Enum as z<never>, { mode: 'fast', count: 2 })
+    expect(value).toEqual({ mode: 'fast', count: 2 })
+    expect(secrets).toEqual([])
+    expect(unprovable).toEqual([])
+  })
+
   it('tolerates structural nodes missing their relation maps', () => {
-    expect(redactSecrets({ type: 'dict' } as never, { k: 'v' })).toEqual({ value: { k: 'v' }, secrets: [] })
-    expect(redactSecrets({ type: 'object' } as never, { k: 'v' })).toEqual({ value: { k: 'v' }, secrets: [] })
-    expect(redactSecrets({ type: 'array' } as never, ['v'])).toEqual({ value: ['v'], secrets: [] })
+    expect(redactSecrets({ type: 'dict' } as never, { k: 'v' }))
+      .toEqual({ value: { k: 'v' }, secrets: [], unprovable: [] })
+    expect(redactSecrets({ type: 'object' } as never, { k: 'v' }))
+      .toEqual({ value: { k: 'v' }, secrets: [], unprovable: [] })
+    expect(redactSecrets({ type: 'array' } as never, ['v']))
+      .toEqual({ value: ['v'], secrets: [], unprovable: [] })
   })
 })
 
