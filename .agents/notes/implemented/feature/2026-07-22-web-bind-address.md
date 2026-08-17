@@ -4,7 +4,7 @@ Status: implemented
 
 English | [中文](2026-07-22-web-bind-address.zh.md)
 
-> The carrier-level decisions below remain current; the CLI flag this note added is superseded by [the CLI refuses the wildcard bind host](../bug-fix/2026-08-13-cli-refuses-wildcard-host.md), which withdrew `--host 0.0.0.0` and left all-interface binding to composition.
+> The carrier-level decisions below remain current; the CLI flag this note added is superseded by [the CLI refuses the wildcard bind host](../simplification/2026-08-13-cli-refuses-wildcard-host.md), which withdrew `--host 0.0.0.0` and left all-interface binding to composition.
 
 ## Problem
 

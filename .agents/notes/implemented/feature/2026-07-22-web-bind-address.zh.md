@@ -4,7 +4,7 @@ Status: implemented
 
 [English](2026-07-22-web-bind-address.md) | 中文
 
-> 下文在载体层面的决定仍然有效；本 Note 加入的那个 CLI 参数已被 [CLI 拒绝通配绑定地址](../bug-fix/2026-08-13-cli-refuses-wildcard-host.md)取代——它撤除了 `--host 0.0.0.0`，把全接口绑定交给组合层决定。
+> 下文在载体层面的决定仍然有效；本 Note 加入的那个 CLI 参数已被 [CLI 拒绝通配绑定地址](../simplification/2026-08-13-cli-refuses-wildcard-host.md)取代——它撤除了 `--host 0.0.0.0`，把全接口绑定交给组合层决定。
 
 ## 问题
 
