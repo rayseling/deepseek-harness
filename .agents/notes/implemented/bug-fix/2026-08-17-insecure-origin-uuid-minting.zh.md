@@ -12,7 +12,7 @@ Web GUI 只能从回环地址启动。经明文 HTTP 从其他任何地址访问
 
 `AbstractApiClient.mintRpcId()` 调用了它。那是每一个一元 `/api` 请求共用的唯一铸造点（`WebApiClient` 直接继承；`respond` 不铸造新 id——发起方铸造，响应方回显），而 `ConnectionController` 的就绪握手正是 `host.describe`，于是第一个连接世代的第一个请求就抛出，客户端还来不及订阅任何东西。输入区的草稿附件 id（`ui-conversation`）有同一个调用。
 
-这套配置下 `/api` 的 Host 围栏本来是满足的：全接口绑定会把本机的 LAN IPv4 字面量派生进 `client-connection` 的 `trustedHosts`，携带 IP 字面量 Host 的请求可以通过。可达性与信任都正确，客户端只是铸不出 id。因此一套全接口部署——经 profile patch 或程序化组合设置 `webserver.host: '0.0.0.0'`；CLI 自己的 `--host 0.0.0.0` 仍是 usage error（[web 绑定地址](../feature/2026-07-22-web-bind-address.md)）——及其启动行宣传的 LAN URL 从浏览器根本用不了，这正是社区报告 [#221](https://github.com/deepseek-ai/deepseek-harness/discussions/221) 与 [#514](https://github.com/deepseek-ai/deepseek-harness/discussions/514) 描述的现象。
+这套配置下 `/api` 的 Host 围栏本来是满足的：全接口绑定会把本机的 LAN IPv4 字面量派生进 `client-connection` 的 `trustedHosts`，携带 IP 字面量 Host 的请求可以通过。可达性与信任都正确，客户端只是铸不出 id。因此一套全接口部署——经 profile patch 或程序化组合设置 `webserver.host: '0.0.0.0'`；CLI 自己的 `--host 0.0.0.0` 是 usage error（[CLI 拒绝通配绑定地址](2026-08-13-cli-refuses-wildcard-host.md)）——及其启动行宣传的 LAN URL 从浏览器根本用不了，这正是社区报告 [#221](https://github.com/deepseek-ai/deepseek-harness/discussions/221) 与 [#514](https://github.com/deepseek-ai/deepseek-harness/discussions/514) 描述的现象。
 
 其中一条铸造路径本来已经正确。`packages/client/connection/src/client/rpc.ts` 通过一个包内私有、基于 `getRandomValues` 的 `randomUuid()` 铸造，那是为通用 Connection 通道加的。正是它的存在让这次失败看起来像配置问题：一部分流量铸造正常，而启动应用的那个载体不行。
 
@@ -36,7 +36,7 @@ Web GUI 只能从回环地址启动。经明文 HTTP 从其他任何地址访问
 
 ## 影响
 
-绑定到全部接口的 Web 部署可从浏览器使用：就绪握手、所有一元调用、草稿图片附件都能在非安全上下文中铸造 id。下行 WebSocket 帧从未受影响——其 id 由 Host 端用 `node:crypto` 铸造。回环行为不变，因为 `getRandomValues` 在那里同样可用，且 id 格式完全相同。全接口绑定本身仍是组合层面的选择，不是 CLI 参数（[web 绑定地址](../feature/2026-07-22-web-bind-address.md)、[api 浏览器信任边界](../architecture/2026-07-28-api-browser-trust-boundary.md)）。
+绑定到全部接口的 Web 部署可从浏览器使用：就绪握手、所有一元调用、草稿图片附件都能在非安全上下文中铸造 id。下行 WebSocket 帧从未受影响——其 id 由 Host 端用 `node:crypto` 铸造。回环行为不变，因为 `getRandomValues` 在那里同样可用，且 id 格式完全相同。全接口绑定本身仍是组合层面的选择，不是 CLI 参数（[CLI 拒绝通配绑定地址](2026-08-13-cli-refuses-wildcard-host.md)）。
 
 特权方法的钉定未受触碰，仍决定非回环客户端能做什么：`settings.*`、`credentials.*`、`llm.discoverModels`、`host.pickDirectory`/`openPath` 以及 agent-preset 的编写类方法对 LAN Host 一律回 403，所以远程浏览器可以对话、可以跑工具，但不能重新配置这套部署。这次修复移除的是一次崩溃，不是那条边界，也没有加入认证——非回环绑定依然信任它所在的网络。
 
