@@ -12,7 +12,7 @@ What the flag actually produced is a carrier with no authentication layer listen
 
 ## Decision
 
-The launcher refuses it. `web-startup` rejects `--host 0.0.0.0` as a usage error before publishing `webStartup`, so nothing binds, and both the option help and the LAN example are withdrawn from `dsh --profile web --help`. The refusal message names the reason and the alternative rather than only the constraint: all-interfaces binding "would expose remote code execution to the network; use 127.0.0.1 instead".
+The launcher refuses the wildcard value, not the flag. `--host <host>` is still declared and still resolves every other value, while `web-startup` rejects exactly `0.0.0.0` as a usage error before publishing `webStartup`, so nothing binds. What `dsh --profile web --help` loses is the wildcard guidance: the option's own text drops from "bind host; pass 0.0.0.0 to reach it from another machine" to "bind host", and the `--host 0.0.0.0` example line ("reach it from another machine on the LAN") is deleted. The refusal message names the reason and the alternative rather than only the constraint: all-interfaces binding "would expose remote code execution to the network; use 127.0.0.1 instead".
 
 All-interface binding itself is untouched. `dsh-host-webserver`'s `host` schema still accepts `'0.0.0.0'`, so a deployment that wants it sets the `webserver` row's `config.host` through a profile patch or a programmatic composition, and the Web runtime still derives that machine's LAN IPv4 literals into the connection row's `trustedHosts` so the resulting LAN URL passes the Host fence. What changed is who makes the choice: a composition author editing a config file, not a flag a help screen recommends.
 
@@ -27,7 +27,7 @@ This supersedes the CLI half of [web bind address](../feature/2026-07-22-web-bin
 
 ## Consequences
 
-`dsh web` reaches a browser on another machine only through a composition that opts in, and the flag family the CLI keeps is `--port` and `--trusted-host`. An operator who followed the old help text gets a usage error naming the reason, not a silent loopback bind.
+`dsh web` reaches a browser on another machine only through a composition that opts in. The CLI's flag family is unchanged — `--host`, `--port`, and `--trusted-host` — and only one `--host` value is gone. An operator who followed the old help text gets a usage error naming the reason, not a silent loopback bind.
 
 A browser on such a deployment does boot: ids mint without a secure context ([insecure-origin uuid minting](../bug-fix/2026-08-17-insecure-origin-uuid-minting.md)), which is a separate defect this decision predates. The privileged-method pin still keeps the configuration plane loopback-only there, so a remote browser can converse and run tools but not reconfigure the deployment.
 

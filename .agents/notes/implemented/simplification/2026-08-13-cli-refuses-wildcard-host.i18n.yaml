@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/simplification/2026-08-13-cli-refuses-wildcard-host.md
-2026-08-13-cli-refuses-wildcard-host.md: 6eedeaec67e3b486d9e7acc8fcf5ee4039d03943
-2026-08-13-cli-refuses-wildcard-host.zh.md: 6ee798a13d6f4d2cf28f64d33dd081ee5a13b503
+2026-08-13-cli-refuses-wildcard-host.md: 64d2ffe2cb99572f5ab3babee8a0e941602ad0e5
+2026-08-13-cli-refuses-wildcard-host.zh.md: 538b3a837a3dd613dc7cf8e39012d2b2fb883c00

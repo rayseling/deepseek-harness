@@ -12,7 +12,7 @@ Status: implemented
 
 ## 决定
 
-启动器拒绝它。`web-startup` 在发布 `webStartup` 之前就把 `--host 0.0.0.0` 判为 usage error，于是没有任何端口被绑定；`dsh --profile web --help` 里的选项说明与那条 LAN 示例一并撤除。拒绝信息给出的不只是约束，还有原因和替代方案：全接口绑定「would expose remote code execution to the network; use 127.0.0.1 instead」。
+启动器拒绝的是那个通配取值，不是这个参数。`--host <host>` 仍然声明在册，其他取值照常解析；`web-startup` 只把 `0.0.0.0` 这一个值在发布 `webStartup` 之前判为 usage error，于是没有任何端口被绑定。`dsh --profile web --help` 失去的是通配指引：选项自身的说明由「bind host; pass 0.0.0.0 to reach it from another machine」缩为「bind host」，那条 `--host 0.0.0.0` 示例（「reach it from another machine on the LAN」）被删除。拒绝信息给出的不只是约束，还有原因和替代方案：全接口绑定「would expose remote code execution to the network; use 127.0.0.1 instead」。
 
 全接口绑定本身未被触碰。`dsh-host-webserver` 的 `host` schema 仍然接受 `'0.0.0.0'`，所以需要它的部署经 profile patch 或程序化组合设置 `webserver` 行的 `config.host`；Web 运行时也仍会把该机器的 LAN IPv4 字面量推导进 connection 行的 `trustedHosts`，让由此得到的 LAN URL 通过 Host 围栏。改变的是谁来做这个选择：编辑配置文件的组合作者，而不是帮助界面推荐的一个参数。
 
@@ -27,7 +27,7 @@ Status: implemented
 
 ## 影响
 
-`dsh web` 要让另一台机器上的浏览器访问，只能通过显式选择的组合来实现；CLI 保留的参数家族是 `--port` 与 `--trusted-host`。照旧帮助文本操作的人会得到一条说明原因的 usage error，而不是被静默绑到回环。
+`dsh web` 要让另一台机器上的浏览器访问，只能通过显式选择的组合来实现。CLI 的参数家族没有变化——`--host`、`--port` 与 `--trusted-host`——消失的只是 `--host` 的一个取值。照旧帮助文本操作的人会得到一条说明原因的 usage error，而不是被静默绑到回环。
 
 这类部署上的浏览器确实能完成启动：id 铸造不依赖安全上下文（[非安全源 UUID 铸造](../bug-fix/2026-08-17-insecure-origin-uuid-minting.md)），那是本决策之前就存在的另一个缺陷。特权方法的钉定在那里依然把配置面限制为回环专属，所以远程浏览器可以对话、可以跑工具，但不能重新配置这套部署。
 
