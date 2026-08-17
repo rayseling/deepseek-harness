@@ -49,21 +49,24 @@ export class SettingsScopeController<T> implements SettingsScope<T> {
   /**
    * @param api - settings wire face.
    * @param spec - namespace identity and optional narrowing decoder.
-   * @param persistence - remote browsers remain process-local because settings RPCs are loopback-only.
+   * @param persistence - live mode selector, re-read on every load: a remote
+   * page starts process-local and upgrades to Host once the handshake reports
+   * the deployment widened its configuration plane.
    */
   constructor(
     private readonly api: SettingsFace,
     private readonly spec: SettingsScopeSpec<T>,
-    private readonly persistence: 'host' | 'memory' = 'host',
+    private readonly persistence: () => 'host' | 'memory' = () => 'host',
   ) {
+    const mode = persistence()
     this.store = createSnapshotStore<SettingsScopeSnapshot<T>>({
-      status: persistence === 'host' ? 'loading' : 'unavailable',
+      status: mode === 'host' ? 'loading' : 'unavailable',
       value: undefined,
       base: undefined,
       user: undefined,
       revision: undefined,
       writable: false,
-      mode: persistence,
+      mode,
     })
   }
 
@@ -147,7 +150,17 @@ export class SettingsScopeController<T> implements SettingsScope<T> {
   }
 
   private enqueue(operation: () => Promise<void>): Promise<void> {
-    if (this.persistence === 'memory' || this.disposed) return Promise.resolve()
+    if (this.disposed) return Promise.resolve()
+    const mode = this.persistence()
+    if (mode !== this.getSnapshot().mode) {
+      // The handshake resolved after construction; adopt the live mode so an
+      // upgraded page leaves 'unavailable' and a downgraded one stops loading.
+      this.store.update((state) => {
+        state.mode = mode
+        state.status = mode === 'host' ? 'loading' : 'unavailable'
+      })
+    }
+    if (mode === 'memory') return Promise.resolve()
     const task = this.tail.then(async () => {
       if (this.disposed) return
       await operation()
@@ -248,7 +261,7 @@ export class SettingsScopeBinder extends Service {
     const controller = new SettingsScopeController<T>(
       connection.api,
       spec,
-      connection.isLoopback ? 'host' : 'memory',
+      () => connection.canConfigure() ? 'host' : 'memory',
     )
     ctx.effect(() => {
       const refresh = (namespace?: string): void => {
@@ -258,6 +271,9 @@ export class SettingsScopeBinder extends Service {
       const disposers = [
         (ctx.get('remote') as Context['remote']).$on('settings/document-updated', refresh),
         ctx.on('connection/reset', () => { refresh() }),
+        // The handshake decides canConfigure on a remote page; re-load when it
+        // lands so a widened deployment upgrades this scope to Host.
+        connection.hostDescription.subscribe(() => { refresh() }),
       ]
       void controller.load()
       return async () => {

@@ -17,11 +17,16 @@ interface SchemaNode {
   type?: string
   meta?: { role?: unknown }
   /** `object` properties, keyed by property name. */
-  dict?: Record<string, SchemaNode>
+  dict?: Record<string, SchemaNode | undefined>
   /** `dict`/`array` element schema, and `transform`'s source schema. */
   inner?: SchemaNode
   /** `union`/`intersect` branches and `tuple` members. */
-  list?: SchemaNode[]
+  list?: (SchemaNode | undefined)[]
+  /**
+   * `lazy`'s deferred child factory. Opaque here because schemastery's own
+   * signature returns its `Schema` class; the result is read structurally.
+   */
+  builder?: unknown
 }
 
 /** One schema-declared secret position inside a redacted value. */
@@ -57,13 +62,37 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** Every nested schema a node holds, whichever container names it uses. */
+/**
+ * Every nested schema a node holds, whichever container names it uses. A
+ * `lazy` node's child lives behind `builder` (its `inner` is a stand-in until
+ * first validation), so the factory is called here — schemastery documents it
+ * as pure construction.
+ */
 function nested(node: SchemaNode): SchemaNode[] {
-  return [
-    ...node.inner === undefined ? [] : [node.inner],
+  const built = node.type === 'lazy' && typeof node.builder === 'function'
+    ? safeBuild(node.builder as () => unknown)
+    : []
+  const candidates: (SchemaNode | undefined)[] = [
+    ...node.type === 'lazy' ? [] : [node.inner],
+    ...built,
     ...node.list ?? [],
     ...Object.values(node.dict ?? {}),
   ]
+  return candidates.filter((candidate): candidate is SchemaNode => candidate !== undefined)
+}
+
+/** Call a lazy builder; a throwing builder counts as hiding a secret. */
+function safeBuild(builder: () => unknown): (SchemaNode | undefined)[] {
+  try {
+    const built = builder()
+    // A schemastery schema is callable, so it reads as 'function', not 'object'.
+    const usable = built !== null && (typeof built === 'object' || typeof built === 'function')
+    return [usable ? built as SchemaNode : undefined]
+  } catch {
+    // A factory that cannot run yields a subtree that cannot be proven
+    // secret-free; hidesSecret must treat it as hiding one.
+    return [{ meta: { role: 'secret' } }]
+  }
 }
 
 /**
@@ -91,6 +120,12 @@ function walk(node: SchemaNode | undefined, value: unknown, path: string[], sink
     case 'object': {
       const properties = node.dict ?? {}
       const source = isRecord(value) ? value : undefined
+      if (source === undefined && value !== undefined && hidesSecret(node)) {
+        // A malformed value under a secret-bearing schema: the walker cannot
+        // address the secret positions inside it, so nothing in it may pass.
+        sink.unprovable.push(path)
+        return undefined
+      }
       const rebuilt: Record<string, unknown> = {}
       if (source !== undefined) {
         for (const [key, entry] of Object.entries(source)) {
@@ -105,7 +140,13 @@ function walk(node: SchemaNode | undefined, value: unknown, path: string[], sink
       return source === undefined && Object.keys(rebuilt).length === 0 ? value : rebuilt
     }
     case 'dict': {
-      if (!isRecord(value)) return value
+      if (!isRecord(value)) {
+        if (value !== undefined && hidesSecret(node)) {
+          sink.unprovable.push(path)
+          return undefined
+        }
+        return value
+      }
       const rebuilt: Record<string, unknown> = {}
       for (const [key, entry] of Object.entries(value)) {
         const stripped = walk(node.inner, entry, [...path, key], sink)
@@ -114,7 +155,13 @@ function walk(node: SchemaNode | undefined, value: unknown, path: string[], sink
       return rebuilt
     }
     case 'array': {
-      if (!Array.isArray(value)) return value
+      if (!Array.isArray(value)) {
+        if (value !== undefined && hidesSecret(node)) {
+          sink.unprovable.push(path)
+          return undefined
+        }
+        return value
+      }
       return value.map((entry, index) => walk(node.inner, entry, [...path, String(index)], sink))
     }
     default:
@@ -138,8 +185,12 @@ function walk(node: SchemaNode | undefined, value: unknown, path: string[], sink
  * `secrets`. It fails closed elsewhere: a `union`, `intersect`, `transform`, or
  * `tuple` whose subtree declares a secret is withheld from the value and its
  * path reported in `unprovable`, because this walker cannot say which branch a
- * concrete value took. Branch sets with no secret in them — a literal enum,
- * say — are returned as they are. The input is never mutated.
+ * concrete value took; a `lazy` child is materialized through its builder for
+ * the same containment question; and a malformed value under a secret-bearing
+ * container (a string where the dict should be) is withheld too, because the
+ * secret positions inside it cannot be addressed. Branch sets with no secret
+ * in them — a literal enum, say — are returned as they are. The input is
+ * never mutated.
  * @param schema - live schemastery schema describing the value.
  * @param value - the value to strip; `undefined` yields an empty record with
  *   object-property secret slots still enumerated.
@@ -150,4 +201,26 @@ export function redactSecrets(schema: z<never>, value: unknown): RedactedValue {
   const sink: WalkSink = { secrets: [], unprovable: [] }
   const stripped = walk(schema, value, [], sink)
   return { value: stripped, secrets: sink.secrets, unprovable: sink.unprovable }
+}
+
+/**
+ * Detach a serialized schemastery envelope (`schema.toJSON()`) with every
+ * secret-role node's stored values removed. The envelope's `refs` table is
+ * flat — a node buried in a union branch or behind a transform is still its
+ * own ref — so stripping `default` and `initial` (schemastery's
+ * `.default(...)` writes both) from each `role: 'secret'` ref covers every
+ * position the value walker can or cannot reach.
+ * @param envelope - the `schema.toJSON()` result.
+ * @returns a detached envelope safe to serialize to a wire client.
+ */
+export function sanitizeSchemaEnvelope(envelope: unknown): unknown {
+  const detached = structuredClone(envelope)
+  if (!isRecord(detached) || !isRecord(detached['refs'])) return detached
+  for (const node of Object.values(detached['refs'])) {
+    if (!isRecord(node) || !isRecord(node['meta'])) continue
+    if (node['meta']['role'] !== 'secret') continue
+    delete node['meta']['default']
+    delete node['meta']['initial']
+  }
+  return detached
 }

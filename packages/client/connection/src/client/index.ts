@@ -62,6 +62,14 @@ export interface ConnectionHandle {
   readonly api: IApiClient
   /** Whether the current page authority is loopback; non-browser contexts default to true. */
   readonly isLoopback: boolean
+  /**
+   * Whether the configuration plane (settings, credentials, model discovery,
+   * preset authoring) answers this page: loopback always, a remote page only
+   * when the handshake's `remoteConfiguration` capability says the deployment
+   * widened it. Before the first handshake a remote page reads false, so
+   * callers re-evaluate on description changes rather than caching.
+   */
+  canConfigure(): boolean
   /** Generation-scoped Host facts, including native path-open capability. */
   readonly hostDescription: HostDescriptionSource
   /** Generic logical RPC channels over the same Connection transport. */
@@ -104,6 +112,9 @@ export function apply(ctx: Context): void {
   const handle: ConnectionHandle = {
     api,
     isLoopback: pageLocation === undefined || isLoopbackHostname(pageLocation.hostname),
+    canConfigure() {
+      return handle.isLoopback || description?.remoteConfiguration === true
+    },
     hostDescription: {
       getSnapshot: () => description,
       subscribe: (listener) => {

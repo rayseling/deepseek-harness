@@ -61,6 +61,7 @@ async function mount(): Promise<Bench> {
   const handle: ConnectionHandle = {
     api,
     isLoopback: true,
+    canConfigure: () => true,
     hostDescription: {
       getSnapshot: () => undefined,
       subscribe: () => () => {},
@@ -127,7 +128,7 @@ describe('wire event bridge', () => {
     const bench = await mount()
     let resets = 0
     bench.ctx.on('connection/reset', () => { resets++ })
-    const description = { version: '0', cwd: '/f', attachedSessions: 0, canOpenPath: true }
+    const description = { version: '0', cwd: '/f', attachedSessions: 0, canOpenPath: true, remoteConfiguration: false }
     bench.sinks?.onConnected?.(description)
     bench.sinks?.onConnected?.(description) // second generation after a reconnect
     expect(resets).toBe(2)

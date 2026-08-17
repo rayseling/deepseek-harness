@@ -282,7 +282,7 @@ describe('SettingsScopeController', () => {
     const scope = new SettingsScopeController<UiTestSettings>(
       { settings: { describe: describeCall, mutate } } as never,
       { namespace: 'ui-test' },
-      'memory',
+      () => 'memory',
     )
     expect(scope.getSnapshot()).toEqual({
       status: 'unavailable', value: undefined, revision: undefined, writable: false, mode: 'memory',
@@ -376,6 +376,11 @@ describe('SettingsScopeBinder.bind', () => {
     ctx.provide('connection', {
       api: { settings: { describe: describeCall } },
       isLoopback: true,
+      canConfigure: () => true,
+      hostDescription: {
+        getSnapshot: () => undefined,
+        subscribe: () => () => {},
+      },
     } as never)
     let scope!: SettingsScope<UiTestSettings>
     new TestRemote(ctx)
@@ -408,6 +413,11 @@ describe('SettingsScopeBinder.bind', () => {
     ctx.provide('connection', {
       api: { settings: { describe: describeCall } },
       isLoopback: false,
+      canConfigure: () => false,
+      hostDescription: {
+        getSnapshot: () => undefined,
+        subscribe: () => () => {},
+      },
     } as never)
     let scope!: SettingsScope<UiTestSettings>
     new TestRemote(ctx)

@@ -69,6 +69,9 @@ export function apply(ctx: ClientContext): void {
   // locale/change re-registration wiring.
   const t = ctx.locale.bind(NS)
   const connection = ctx.get('connection') as ConnectionHandle
+  // Deliberately isLoopback, not canConfigure: openDocument hands the file to
+  // the HOST's native editor, which a remote operator is not sitting at — the
+  // same reasoning that keeps the native directory picker off remote pages.
   const documentController = connection.isLoopback
     ? new SettingsDocumentStore(connection.api)
     : undefined

@@ -109,9 +109,10 @@ export class FakeApiClient implements IApiClient {
     cwd: string
     attachedSessions: number
     canOpenPath: boolean
+    remoteConfiguration: boolean
   }>> =
     () => Promise.resolve(ok({
-      version: '0-fake', cwd: '/f', attachedSessions: 0, canOpenPath: true,
+      version: '0-fake', cwd: '/f', attachedSessions: 0, canOpenPath: true, remoteConfiguration: false,
     }))
   onPickDirectory: (payload: unknown) => Promise<RpcResponse<{ path: string | null }>> =
     () => Promise.resolve(ok({ path: null }))

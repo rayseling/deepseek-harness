@@ -34,7 +34,7 @@ describe('WelcomeNoticeStore', () => {
   it('acknowledges in memory without calling loopback-only settings APIs', async () => {
     const describe = vi.fn()
     const mutate = vi.fn()
-    const controller = new WelcomeNoticeStore({ settings: { describe, mutate } } as never, 'memory')
+    const controller = new WelcomeNoticeStore({ settings: { describe, mutate } } as never, () => 'memory')
 
     await controller.load()
     expect(controller.store.getSnapshot()).toEqual({ status: 'ready', acknowledged: false, error: null })

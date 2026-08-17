@@ -44,7 +44,13 @@ async function bench() {
       result: { ok: true as const, value: namespace() },
     }
   })
-  ctx.provide('connection', { api: { settings: { describe, mutate } }, isLoopback: true } as never)
+  ctx.provide('connection', {
+    api: { settings: { describe, mutate } },
+    isLoopback: true,
+    canConfigure: () => true,
+    // The scope binder re-loads on handshake changes; this bench never hands out a description.
+    hostDescription: { getSnapshot: () => undefined, subscribe: () => () => {} },
+  } as never)
   // The settings transport and the forwarded-event port the plugin injects.
   new TestRemote(ctx)
   await ctx.plugin(SettingsScopeBinder).await()

@@ -34,7 +34,7 @@ Status: implemented
 - **在 `settings.register()` 处 opt-in metadata**——语义最正（由 namespace 的属主自行声明其暴露与否），改动也最大：seam 的公共接口、两个 LLM（大语言模型）插件，以及它们的文档。记录为：一旦某个非 LLM 的 namespace 确实需要这个面，就采用这个形状。
 - **区分「未注册」与「已注册但未暴露」**——诊断更好，同时也是一台 namespace 枚举预言机。统一答复是刻意为之。
 - **用 diff 而非 revision 来检测冲突**——对整分节写入而言，拿提交时的基线与存储比对是可行的，但编辑器持有的是**脱敏后**的分节：它给不出可比对的基线，这与它不能安全地 `replace` 是同一个原因。计数器两者都不需要。
-- **在这里就修掉脱敏的缺口**——`redactSecrets` 只遍历 `object`/`dict`/`array`，因此藏在 union、intersection 或 transform 之后的机密会被原样返回，且 `secrets` 列表为空；`schema.toJSON()` 会带上 secret 字段的 `.default(...)`；写入拒绝的消息返回的是可能引用了输入的 schema 文本；客户端通过 schemastery 的 `new Function` 重建信封；而 pi-ai 那个纯字符串的 `headers` 字典完全可以合法地放下 `Authorization`。全部真实存在，也全部刻意留给一个 fail-closed 的 `describeForWire()`——它会拒绝自己无法证明安全的 schema。它们被记录为 `TODO(settings-wire-redaction)` 以及各属主 README 的 Known Limitations，而不是在这里做一半。
+- **在这里就修掉脱敏的缺口**——协议回传内容上的五处缺陷属于脱敏本身，而不属于一次「谁能触达这个面」的改动：只能经由 union、intersection、transform 或 tuple 抵达的机密；`schema.toJSON()` 里 secret 字段的 `.default(...)`；可能引用了输入的写入拒绝文本；客户端通过 schemastery 的 `new Function` 重建信封；以及 pi-ai 那个纯字符串的 `headers` 字典——它完全可以合法地放下 `Authorization`。跟着这次边界改动一并处理，只会把每一处都修一半。值的保证归[按 fail-closed 脱敏](2026-08-17-fail-closed-secret-redaction.md)：无法证明已脱敏的子树会被扣下，位置在 `unprovable` 中公布；pi-ai 的 `headers` 元素带上 `role('secret')`，因此 header 值在协议上只写；脱敏路径还会净化 `schema.toJSON()` 信封。拒绝文本与可执行信封仍留在各属主 README 的 Known Limitations 里。
 
 ## 影响
 

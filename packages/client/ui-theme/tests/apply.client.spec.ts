@@ -53,7 +53,12 @@ async function bench(isLoopback = true) {
       result: { ok: true as const, value: namespace() },
     })
   })
-  ctx.provide('connection', { api: { settings: { describe, mutate } }, isLoopback } as never)
+  ctx.provide('connection', {
+    api: { settings: { describe, mutate } },
+    isLoopback,
+    canConfigure: () => isLoopback,
+    hostDescription: { getSnapshot: () => undefined, subscribe: () => () => {} },
+  } as never)
   // The settings transport and the forwarded-event port the plugin injects.
   new TestRemote(ctx)
   await ctx.plugin(SettingsScopeBinder).await()

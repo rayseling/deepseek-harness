@@ -33,6 +33,13 @@ export interface SettingsNamespaceView {
   /** Every schema-declared secret slot with its configured state. */
   secrets: SettingsSecretView[]
   /**
+   * Positions whose redaction could not be proven: those subtrees are
+   * withheld from every layer above, so the value has holes the schema does
+   * not explain. Absent when every secret was addressable. A configuration
+   * surface treats a namespace carrying this as not editable over the wire.
+   */
+  unprovable?: string[][]
+  /**
    * Monotonic revision of the raw user section this view was read at. Send it
    * back as `expectedRevision` on a write so a stale editor is refused rather
    * than silently overwriting a concurrent change.

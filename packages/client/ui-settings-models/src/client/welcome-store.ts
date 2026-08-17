@@ -35,17 +35,19 @@ export class WelcomeNoticeStore {
 
   /**
    * @param api - settings wire face used for durable reads and writes.
-   * @param persistence - remote browsers use memory because settings is loopback-only.
+   * @param persistence - live mode selector, re-read on every load and
+   * acknowledge: a remote page is process-local unless the handshake reports
+   * the deployment widened its configuration plane.
    */
   constructor(
     private readonly api: Pick<IApiClient, 'settings'>,
-    private readonly persistence: 'host' | 'memory' = 'host',
+    private readonly persistence: () => 'host' | 'memory' = () => 'host',
   ) {}
 
   /** Load the acknowledgement from Host settings or initialize process-local state. */
   async load(): Promise<void> {
     const generation = ++this.generation
-    if (this.persistence === 'memory') {
+    if (this.persistence() === 'memory') {
       this.store.update((state) => { state.status = 'ready'; state.error = null })
       return
     }
@@ -79,7 +81,7 @@ export class WelcomeNoticeStore {
    */
   async acknowledge(): Promise<boolean> {
     const generation = ++this.generation
-    if (this.persistence === 'memory') {
+    if (this.persistence() === 'memory') {
       this.store.update((state) => {
         state.status = 'ready'
         state.acknowledged = true

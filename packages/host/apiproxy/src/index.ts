@@ -93,9 +93,40 @@ export class ApiProxyService extends Service implements ApiProxy {
   readonly downloads: ApiProxy['downloads']
   readonly respond: ApiProxy['respond']
 
+  /**
+   * The carrier's registered policy reader. A stable object mutated in place,
+   * not a reassigned field: this service is reached through the cordis tracker
+   * proxy, which forwards a property READ but not a private-field write, so a
+   * `#` field written through the proxy would never be the one describe reads.
+   */
+  private readonly remoteConfigurationSlot: { provider?: () => boolean } = {}
+
+  /**
+   * Register the carrier's answer to "does this deployment serve the
+   * configuration plane to its trusted non-loopback authorities?", surfaced
+   * by `host.describe` as `remoteConfiguration`. One registration at a time —
+   * the carrier owns the policy; a second registrant is a composition error.
+   * @param provider - reads the live policy on every describe.
+   * @returns disposer that clears the registration.
+   */
+  provideRemoteConfiguration(provider: () => boolean): () => void {
+    const slot = this.remoteConfigurationSlot
+    if (slot.provider !== undefined) {
+      throw new Error('apiProxy: remoteConfiguration already has a provider')
+    }
+    slot.provider = provider
+    return () => {
+      delete slot.provider
+    }
+  }
+
   constructor(ctx: Context, config: Config) {
     super(ctx, 'apiProxy')
+    // Captured directly, so describe reads the same object the registration
+    // mutates however either side was reached.
+    const slot = this.remoteConfigurationSlot
     const api = createApiProxy(ctx, {
+      remoteConfiguration: () => slot.provider?.() ?? false,
       defaultModelSelection: () => ctx.agentDefaultModel.currentSelection(),
       saveDefaultModelSelection: selection => ctx.agentDefaultModel.saveSelection(selection),
       cwd: process.cwd(),

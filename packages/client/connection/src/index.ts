@@ -164,6 +164,29 @@ export function apply(ctx: Context, config?: ConnectionConfig): void {
   // generic channel's `authority: 'loopback'` is its own author's requirement,
   // not a deployment's to relax.
   const privilegedHosts = (config?.privilegedAuthority ?? 'loopback') === 'trusted-hosts' ? trustedHosts : []
+  // Announce the policy on the handshake: host.describe reports whether this
+  // deployment answers the configuration plane beyond loopback, which is what
+  // lets a remote page choose Host-backed settings persistence.
+  // Dynamic injection, not a one-shot read: apiProxy is optional here, so a
+  // composition may settle it after this plugin applies, and a registration
+  // made only at apply time would never reach it.
+  ctx.inject(['apiProxy'], (proxyCtx) => {
+    const proxy = proxyCtx.get('apiProxy') as {
+      provideRemoteConfiguration?(provider: () => boolean): () => void
+    }
+    if (proxy.provideRemoteConfiguration === undefined) {
+      // Fail loud: a composition pairing this carrier with an API Proxy that
+      // cannot publish the capability would leave every remote page choosing
+      // process-local settings while the carrier answers the plane.
+      throw new Error('client-connection: apiProxy does not accept a remoteConfiguration provider')
+    }
+    proxyCtx.effect(
+      // Read through the service each time: the tracker proxy forwards the
+      // property, and `this` must stay bound to the service instance.
+      () => proxy.provideRemoteConfiguration?.(() => privilegedHosts.length > 0) ?? (() => {}),
+      'client-connection: remote-configuration capability',
+    )
+  })
   const connection = new HostConnectionService(ctx, trustedHosts)
   const fetchHandler = connection.createSharedFetchHandler(API_PATH, {
     async fetch(request) {

@@ -286,7 +286,7 @@ describe('ProducedFiles row', () => {
   ): Pick<ProducedFilesProps, 'isLoopback' | 'useHostDescription'> => {
     const description = canOpenPath === undefined
       ? undefined
-      : { version: 'test', cwd: '/workspace', attachedSessions: 1, canOpenPath }
+      : { version: 'test', cwd: '/workspace', attachedSessions: 1, canOpenPath, remoteConfiguration: false }
     return {
       isLoopback,
       useHostDescription: selector => selector(description),
@@ -464,6 +464,7 @@ describe('plugin registration', () => {
     ctx.provide('connection', {
       api: { settings: {} },
       isLoopback: false,
+      canConfigure: () => false,
       hostDescription,
     } as never)
     // ui-theme's Appearance row binds a durable scope through these two.

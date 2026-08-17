@@ -122,6 +122,13 @@ interface SettingsDescriptor {
   applies: SettingsApplies
   /** Schema-declared secret positions; present only under `redactSecrets`. */
   secrets?: RedactedSecret[]
+  /**
+   * Positions whose redaction could not be proven — the walker withheld those
+   * subtrees from every layer. Present only under `redactSecrets`, and only
+   * when non-empty; a wire surface renders such a namespace as not remotely
+   * configurable rather than trusting a value with silent holes.
+   */
+  unprovable?: string[][]
 }
 ```
 

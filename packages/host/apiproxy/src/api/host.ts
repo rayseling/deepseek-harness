@@ -41,7 +41,11 @@ export interface HostApi {
    * applied when a new agent doesn't specify them explicitly, absent when the host configures
    * no explicit default (the adapter falls back internally);
    * attachedSessions = count of currently attached sessions (those with a live agent);
-   * canOpenPath = whether this deployment can hand a path to a user-visible native desktop.
+   * canOpenPath = whether this deployment can hand a path to a user-visible native desktop;
+   * remoteConfiguration = whether this deployment answers the configuration plane
+   * (settings/credentials/model discovery/preset authoring) to its trusted
+   * non-loopback authorities — a loopback page always can, so a client combines
+   * this with its own origin.
    */
   describe(request: RpcRequest<{}>): Promise<RpcResponse<{
     version: string
@@ -50,6 +54,7 @@ export interface HostApi {
     model?: string
     attachedSessions: number
     canOpenPath: boolean
+    remoteConfiguration: boolean
   }>>
 
   /**

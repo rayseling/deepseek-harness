@@ -8,7 +8,7 @@
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import type z from '@deepseek-ai/schemastery'
-import { redactSecrets } from './redact.ts'
+import { redactSecrets, sanitizeSchemaEnvelope } from './redact.ts'
 import type { RedactedSecret } from './redact.ts'
 import type { SettingsNamespace, SettingsUpdateSource } from './types.ts'
 
@@ -87,6 +87,13 @@ export interface SettingsDescriptor {
   applies: SettingsApplies
   /** Schema-declared secret positions; present only under `redactSecrets`. */
   secrets?: RedactedSecret[]
+  /**
+   * Positions whose redaction could not be proven — the walker withheld those
+   * subtrees from every layer. Present only under `redactSecrets`, and only
+   * when non-empty; a wire surface renders such a namespace as not remotely
+   * configurable rather than trusting a value with silent holes.
+   */
+  unprovable?: string[][]
 }
 
 /** Options for {@link SettingsProvider.describe}. */
@@ -501,12 +508,23 @@ export abstract class SettingsProvider extends Service {
       if (options?.redactSecrets !== true) return descriptor
       const schema = registration.schema as z<never>
       const redacted = redactSecrets(schema, registration.resolved)
+      const layers = [
+        redacted,
+        base === undefined ? undefined : redactSecrets(schema, base),
+        detachedUser === undefined ? undefined : redactSecrets(schema, detachedUser),
+      ]
+      const unprovable = layers.flatMap(layer => layer?.unprovable ?? [])
       return {
         ...descriptor,
+        // The serialized schema is a wire value too: a secret field's
+        // .default(...) rides its meta, so the envelope is sanitized with the
+        // same guarantee as the layers.
+        schema: sanitizeSchemaEnvelope(descriptor.schema),
         value: redacted.value,
-        ...base === undefined ? {} : { base: redactSecrets(schema, base).value },
-        ...detachedUser === undefined ? {} : { user: redactSecrets(schema, detachedUser).value },
+        ...layers[1] === undefined ? {} : { base: layers[1].value },
+        ...layers[2] === undefined ? {} : { user: layers[2].value },
         secrets: redacted.secrets,
+        ...unprovable.length === 0 ? {} : { unprovable },
       }
     })
   }

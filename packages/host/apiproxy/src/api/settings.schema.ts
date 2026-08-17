@@ -23,6 +23,7 @@ export const settingsNamespaceViewSchema = z.object({
   user: z.unknown().optional(),
   applies: z.union([z.literal('live'), z.literal('restart')]),
   secrets: z.array(settingsSecretViewSchema),
+  unprovable: z.array(z.array(z.string())).optional(),
   revision: z.number(),
 }) satisfies z.ZodType<Wire<SettingsNamespaceView>>
 

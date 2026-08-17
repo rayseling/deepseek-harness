@@ -67,16 +67,43 @@ describe('redactSecrets', () => {
     expect((value as { extra: unknown }).extra).toEqual({ keep: true })
   })
 
-  it('passes malformed container values through untouched', () => {
-    const { value, secrets } = redactSecrets(Adapter as z<never>, {
-      providers: 'not-a-dict',
+  it('withholds a malformed value under a secret-bearing container', () => {
+    // The schema's dict and array both hold secrets, so a value the walker
+    // cannot descend cannot be proven free of them and must not pass.
+    const { value, secrets, unprovable } = redactSecrets(Adapter as z<never>, {
+      providers: 'sk-live-hiding-in-a-string',
       fallbacks: 'not-an-array',
     })
-    expect(value).toEqual({ providers: 'not-a-dict', fallbacks: 'not-an-array' })
+    expect(JSON.stringify(value)).not.toContain('sk-live-hiding-in-a-string')
+    expect(value).toEqual({})
+    expect(unprovable).toEqual([['providers'], ['fallbacks']])
     expect(secrets).toEqual([
       { path: ['apiKey'], set: false },
       { path: ['nested', 'token'], set: false },
     ])
+  })
+
+  it('passes a malformed value through where the schema holds no secret', () => {
+    const Plain = z.object({ tags: z.dict(z.string()), extras: z.array(z.number()) })
+    const { value, secrets, unprovable } = redactSecrets(Plain as z<never>, {
+      tags: 'not-a-dict',
+      extras: 'not-an-array',
+    })
+    expect(value).toEqual({ tags: 'not-a-dict', extras: 'not-an-array' })
+    expect(secrets).toEqual([])
+    expect(unprovable).toEqual([])
+  })
+
+  it('sees a secret behind a lazy schema and withholds the value', () => {
+    const Lazy = z.object({ auth: z.lazy(() => z.object({ token: z.string().role('secret') })) })
+    const { value, unprovable } = redactSecrets(Lazy as z<never>, { auth: { token: 'live-secret' } })
+    expect(JSON.stringify(value)).not.toContain('live-secret')
+    expect(unprovable).toEqual([['auth']])
+
+    const LazyPlain = z.object({ meta: z.lazy(() => z.object({ label: z.string() })) })
+    const plain = redactSecrets(LazyPlain as z<never>, { meta: { label: 'visible' } })
+    expect(plain.value).toEqual({ meta: { label: 'visible' } })
+    expect(plain.unprovable).toEqual([])
   })
 
   it('treats a secret-role container as one opaque secret leaf', () => {
@@ -197,5 +224,46 @@ describe('describe() layers and redaction', () => {
     expect(descriptor?.secrets).toEqual([{ path: ['apiKey'], set: true }])
     const [verbatim] = ctx.settings.describe()
     expect(verbatim?.value).toEqual({ apiKey: 'user-key', baseURL: 'https://user' })
+  })
+})
+
+describe('wire descriptor hardening', () => {
+  const NS = settingsNamespace('hardened')
+
+  it('sanitizes a secret default out of the serialized schema envelope', async () => {
+    const ctx = new Context()
+    await ctx.plugin(MemorySettings)
+    const Schema = z.object({
+      apiKey: z.string().role('secret').default('ENVELOPE_SECRET'),
+      pick: z.union([z.object({ token: z.string().role('secret').default('BRANCH_SECRET') }), z.const('none')]),
+      url: z.string().default('https://plain'),
+    })
+    ctx.settings.register(NS, Schema)
+    const [redacted] = ctx.settings.describe({ redactSecrets: true })
+    const envelope = JSON.stringify(redacted?.schema)
+    expect(envelope).not.toContain('ENVELOPE_SECRET')
+    expect(envelope).not.toContain('BRANCH_SECRET')
+    expect(envelope).toContain('https://plain')
+    // The unredacted internal read keeps the live schema untouched.
+    const [plain] = ctx.settings.describe()
+    expect(JSON.stringify(plain?.schema)).toContain('ENVELOPE_SECRET')
+  })
+
+  it('reports unprovable positions on the redacted descriptor', async () => {
+    const ctx = new Context()
+    await ctx.plugin(MemorySettings, { doc: { hardened: { pick: { token: 'USER_SECRET' } } } })
+    const Schema = z.object({
+      pick: z.union([z.object({ token: z.string().role('secret') }), z.const('none')]),
+    })
+    ctx.settings.register(NS, Schema)
+    const [redacted] = ctx.settings.describe({ redactSecrets: true })
+    expect(JSON.stringify(redacted?.value ?? {})).not.toContain('USER_SECRET')
+    expect(JSON.stringify(redacted?.user ?? {})).not.toContain('USER_SECRET')
+    expect(redacted?.unprovable).toEqual(expect.arrayContaining([['pick']]))
+    // The clean namespace shape omits the member entirely.
+    const clean = new Context()
+    await clean.plugin(MemorySettings)
+    clean.settings.register(NS, z.object({ url: z.string() }))
+    expect(clean.settings.describe({ redactSecrets: true })[0]).not.toHaveProperty('unprovable')
   })
 })

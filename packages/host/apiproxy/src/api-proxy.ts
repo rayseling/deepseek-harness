@@ -667,6 +667,12 @@ export interface ApiProxyDefaults {
    * falls back to platform detection ({@link canOpenNativePath}).
    */
   canOpenPath?: () => boolean
+  /**
+   * Whether the deployment's carrier answers the configuration plane to its
+   * trusted non-loopback authorities. The carrier owns that policy and
+   * registers this provider; absent, describe reports false.
+   */
+  remoteConfiguration?: () => boolean
 }
 
 /** The tool/call payload fields the presenter path reads. */
@@ -1935,6 +1941,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
       ...descriptor.user === undefined ? {} : { user: descriptor.user },
       applies: descriptor.applies,
       secrets: (descriptor.secrets ?? []).map(secret => ({ path: [...secret.path], set: secret.set })),
+      ...descriptor.unprovable === undefined ? {} : { unprovable: descriptor.unprovable.map(path => [...path]) },
       revision: descriptor.revision,
     }
   }
@@ -2935,6 +2942,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           model: selection.model,
           attachedSessions: ctx.agents.list().length,
           canOpenPath: canOpenPaths(),
+          remoteConfiguration: defaults.remoteConfiguration?.() ?? false,
         }))
       },
 
