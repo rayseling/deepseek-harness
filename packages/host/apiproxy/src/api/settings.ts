@@ -35,8 +35,11 @@ export interface SettingsNamespaceView {
   /**
    * Positions whose redaction could not be proven: those subtrees are
    * withheld from every layer above, so the value has holes the schema does
-   * not explain. Absent when every secret was addressable. A configuration
-   * surface treats a namespace carrying this as not editable over the wire.
+   * not explain. Absent when every secret was addressable. This method still
+   * answers such a namespace; the client is what refuses it —
+   * `SettingsScopeController` publishes it as unavailable and read-only and
+   * declines writes, so no form edits a value assembled from an incomplete
+   * read.
    */
   unprovable?: string[][]
   /**
@@ -62,8 +65,11 @@ export interface SettingsApi {
    * Describe every registered namespace: redacted layered values plus the
    * serialized schema a client renders its form from. `hasDocument` reports
    * whether a file-backed provider owns a local document without exposing its
-   * Host path. This method is loopback-only; `writable: false` (read-only
-   * provider) tells the client to disable every write control.
+   * Host path. This method belongs to the configuration plane, so the
+   * authorities that reach it follow the carrier's `privilegedAuthority` —
+   * loopback by default, the declared trusted hosts when a deployment widens
+   * it. `writable: false` (read-only provider) tells the client to disable
+   * every write control.
    */
   describe(request: RpcRequest<{}>): Promise<RpcResponse<{
     writable: boolean

@@ -294,6 +294,31 @@ describe('SettingsScopeController', () => {
     expect(mutate).not.toHaveBeenCalled()
   })
 
+  it('refuses a namespace whose Host view reports withheld subtrees', async () => {
+    // `unprovable` means the Host could not prove the value free of secrets and
+    // withheld those subtrees. A form must not treat what is left as editable.
+    const withheld: SettingsNamespaceView = { ...view({ preference: 'dark' }, 1), unprovable: [['auth']] }
+    const describeCall = vi.fn()
+      .mockResolvedValueOnce(ok({ writable: true, hasDocument: true, namespaces: [withheld] }))
+    const mutate = vi.fn()
+    const scope = new SettingsScopeController<UiTestSettings>(
+      { settings: { describe: describeCall, mutate } } as never,
+      { namespace: 'ui-test' },
+    )
+    await scope.load()
+
+    expect(scope.getSnapshot()).toMatchObject({
+      status: 'unavailable',
+      value: undefined,
+      writable: false,
+    })
+    // …and a write is refused rather than persisting a section assembled from
+    // a read with holes in it.
+    await scope.set('preference', 'light')
+    expect(mutate).not.toHaveBeenCalled()
+    await scope.dispose()
+  })
+
   it('carries the composition base and the user layer into the snapshot', async () => {
     const layered: SettingsNamespaceView = {
       ...view({ preference: 'dark' }, 3),

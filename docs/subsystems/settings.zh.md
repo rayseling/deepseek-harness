@@ -165,7 +165,7 @@ walker 会下降进 `object`、`dict` 与 `array`，移除其中每个已声明�
 
 序列化后的 schema 同样是一份对外传输的值，因此 `describe` 会让它经过 `sanitizeSchemaEnvelope`：每个 `role: 'secret'` ref 上的 `default` 与 `initial` 都被删除，而扁平的 `refs` 表连值 walker 到不了的机密节点也一并覆盖。于是表单能为机密字段渲染只写输入框，而不会收到为它声明的默认值。
 
-扣下不等于拒绝。descriptor 与它的协议视图都会把 `unprovable` 与脱敏后的各层一起送出，持有它的界面自行决定如何呈现这样一个 namespace：它的值缺了若干脱敏器无法证明不含机密的子树。把它呈现为不可编辑是既定答案，而 seam 本身并不强制这一点。
+在 Host 一侧，扣下不等于拒绝：descriptor 与它的协议视图都会把 `unprovable` 与脱敏后的各层一起送出，Host 仍然作答。真正变成拒绝的地方在客户端——`SettingsScopeController` 会把这样的 namespace 发布为 `unavailable` 且只读，并拒绝对它的写入，因为一份带着「脱敏器无法证明其不含机密」的子树被扣下的值，不是表单可以编辑的值。仍然延期的是 Host 侧那种根本不提供该 namespace 的拒绝。
 
 `role('secret')` 落在 dict 元素上，会让该 dict 中每个值都成为只写。`dsh-llm-pi-ai` 就这样声明其 profile 的 `headers`（header 值本身没有任何东西能表明它是凭据），因此键名随 `secrets` 一起送出供表单渲染，而值一概不回传；`apiKeyEnv` 中的引用名仍可读取，因为命名一份凭据不等于持有它。请求依旧使用存储的真实值，被剥离的只是被描述的视图。
 

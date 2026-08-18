@@ -20,7 +20,11 @@ walker 对自己无法下降的东西 fail closed。它的 `default:` 分支现�
 
 序列化后的 schema 同样是一份上线的值。`sanitizeSchemaEnvelope` 会分离 `schema.toJSON()`，并从每个 `role: 'secret'` 的 ref 上删除 `default` 与 `initial`；`describe` 在脱敏时应用它，于是 secret 字段声明的默认值不再越过值脱敏随信封上线。信封的 `refs` 表是扁平的，这正是它能覆盖到值 walker 到不了的那些 secret 节点的原因：埋在 union 分支里的节点仍然是它自己的一条 ref。
 
-`unprovable` 是被发布出去的，而不是算完就丢：它随 `SettingsDescriptor` 与 wire 视图 `SettingsNamespaceView` 一起出去，为空时省略，因此配置界面可以把这样的 namespace 呈现为不可编辑，而不是去信任一份带着无声窟窿的值。
+`dict` 的键 schema 同样是一条嵌套关系（`sKey`），而其上的 secret role 意味着**键名本身**就是机密。它们不能进 `secrets`——那份附带清单里的每一条都会写出自己的路径，列出它们恰好会公开本该藏起来的东西——因此整个 dict 被扣下，只报出它自身的位置。
+
+包含性搜索是环安全的，因为 `z.lazy` 正是递归 schema 的写法，若不然调用它的 builder 会把环无限展开。重访一个节点不贡献任何结论，因此环本身永远不会让一棵子树成为「藏有机密」；只有真正找到的 secret role 才会。对于每次调用都返回一棵全新树、因而没有可检测的重复身份的 builder，还有一个深度上界兜底：耗尽它就回答「这里可能藏着机密」，从而不让 Host 卡在一个它分析不完的协议请求上。
+
+`unprovable` 是被发布出去的，而不是算完就丢：它随 `SettingsDescriptor` 与 wire 视图 `SettingsNamespaceView` 一起出去，为空时省略。真正拒绝它的是客户端——`SettingsScopeController` 会把这样的 namespace 发布为 `unavailable` 且只读，并拒绝对它的写入，因此没有任何表单会去编辑一份由不完整读取拼出的值。
 
 `headers` 在协议上变为只写：其元素带 `role('secret')`，所以脱敏后的 `describe()` 扣下每一个值，而键名走 `secrets` 附带清单——正是这一点让表单能为每个 header 渲染只写输入框。真实请求继续使用真实值，只有被描述的视图被剥离。`apiKeyEnv` 的引用名保持可读，因为引用名不是凭据。
 
@@ -38,13 +42,15 @@ walker 对自己无法下降的东西 fail closed。它的 `default:` 分支现�
 
 配置界面不再显示某个 pi-ai 提供方已有的 header 值，而是为每个键显示只写输入框。曾把凭据存进 `headers` 的操作者，路由照常工作，而那条凭据不再能从页面上读到。要让表单显示一条凭据的名字，`apiKeyEnv` 仍是那个办法。
 
-`RedactedValue` 新增了必填成员 `unprovable`，因此每个解构该结果的调用方都会看到它。仍然延期的是「拒绝」本身：扣下一棵子树并报出它的位置，与拒绝该 namespace 并不是一回事，而今天除了把 `unprovable` 带出去之外，没有任何东西依据它行动。
+`RedactedValue` 新增了必填成员 `unprovable`，因此每个解构该结果的调用方都会看到它。拒绝发生在客户端而不是 Host：`describe` 仍会答复一个携带 `unprovable` 的 namespace，是 scope 控制器让它不可编辑。一个根本不提供这类 namespace、并净化错误文本的 Host 侧 `describeForWire()`，仍是更完整的答案，属于延期项。
 
 有一条通道在构造上仍然开着，并已记入 settings 的 README：schema 未声明的键会原样上线，因为对象 walker 会保留 schema 之外的键，而 schema 从未建模过的东西无从分类。凭据应当落在已声明 `role('secret')` 的字段上，或藏在 `apiKeyEnv` 这类引用之后。
 
 ## 测试
 
 `packages/settings/settings/tests/redact.spec.ts` 对两种走不进去的形态都证明了扣下：藏在某个 `union` 分支里的 secret、以及位于 `transform` 之下的 secret，都不出现在值里——断言方式是在序列化后的值里搜索那个真实字符串，而不只是比对结构——并且各自把路径报进 `unprovable`。配套用例钉住让这个判据值得存在的非回归：一个字面量枚举 `union` 与一个普通数字并列时原样返回，`secrets` 与 `unprovable` 都为空。
+
+递归的 `z.lazy` schema 在两个方向上都有覆盖——带机密的那个会被扣下并报出位置，且不耗尽调用栈；仅仅递归的那个照常返回它的值；而键 schema 声明了机密的 `dict` 会被扣下，键名既不出现在值里、也不出现在 `secrets` 里，普通键 schema 则让该 dict 保持可读。
 
 另有两个用例覆盖第一轮之后才发现的位置：藏在 `lazy` builder 之后的 secret 会被扣下，而其下没有任何 secret 的 `lazy` schema 仍然返回它的值；带 secret 的容器下的畸形值会被扣下并报出两条路径，而同样的畸形若所属 schema 不含 secret 则原样通过。descriptor 层面的用例钉住信封与被发布的成员：脱敏后 describe 的序列化 schema 里不含 secret 的 `.default(...)`（包括声明在某个 union 分支内部的那一个），而普通字段的默认值仍在；未脱敏的内部读取仍然带着它；secret 位于 union 之下的 namespace 会报出 `unprovable`，而干净的 namespace 省略该成员。
 

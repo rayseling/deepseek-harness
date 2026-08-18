@@ -16,5 +16,5 @@ None; this package neither assembles nor sends a provider request.
 
 ## Known Limitations and Deferred Work
 
-- **Remote browsers get no durable settings** — the settings RPCs are loopback-only, so a scope bound in a non-loopback browser starts `unavailable` and never crosses the wire; every row it backs is inert there.
+- **A remote browser's settings follow the deployment's posture** — a scope selects Host or process-local persistence from `connection.canConfigure()`, which is loopback or the handshake's `remoteConfiguration` capability, re-read on every load so a page upgrades when that capability arrives. Under the shipped loopback-only default a non-loopback browser still starts `unavailable` and every row it backs is inert there. A namespace whose Host view carries `unprovable` lands in the same `unavailable`, write-refusing state, whatever the authority.
 - **One field per write** — `set` sends a single `set` op, so a row that must move two fields together has no transaction and publishes two revisions.

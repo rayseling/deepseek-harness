@@ -233,22 +233,25 @@ interface TypertClientRemote extends TypertRemoteNamespaceMap {
 
 Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — this section is byte-identical in both language sides of the page. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
 
-<a id="ctxapiproxy--apiproxy"></a>
+<a id="ctxapiproxy--hostapiproxy"></a>
 
-### `ctx.apiProxy` — `ApiProxy`
+### `ctx.apiProxy` — `HostApiProxy`
 
-Root interface of the unified API. New client-request domain = one new file pair + one field here + one map row.
+The in-process API Proxy: the transport-agnostic ApiProxy dispatch face plus the Host-local capabilities only the service owns. Kept distinct from `ApiProxy` itself because a remote or fixture implementation serves the dispatch face without holding any deployment policy.
 
 ```ts cordis-catalog
 /**
- * Response entry for server requests; not a domain method.
- * @param message - Client response carrying the server request's rpcId.
- * @returns Transport receipt for the response delivery.
+ * Register the carrier's answer to "does this deployment serve the
+ * configuration plane to its trusted non-loopback authorities?", surfaced by
+ * `host.describe` as `remoteConfiguration`. One registration at a time — the
+ * carrier owns the policy; a second registrant is a composition error.
+ * @param provider - reads the live policy on every describe.
+ * @returns disposer that clears the registration.
  */
-respond(message: ClientResponse): Promise<RpcReceipt>
+provideRemoteConfiguration(provider: () => boolean): () => void
 ```
 
-Source: [`packages/host/apiproxy/src/api/index.ts:22`](../../packages/host/apiproxy/src/api/index.ts)
+Source: [`packages/host/apiproxy/src/index.ts:39`](../../packages/host/apiproxy/src/index.ts)
 
 <a id="ctxtypert--typertregistry"></a>
 

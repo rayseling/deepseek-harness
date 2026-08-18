@@ -115,6 +115,12 @@ export class SettingsScopeController<T> implements SettingsScope<T> {
   }
 
   private write(op: SettingsPathOpView): Promise<void> {
+    if (this.getSnapshot().status === 'unavailable') {
+      // Memory mode and a withheld-subtree namespace reach the same state, and
+      // neither may issue a Host write: the first has no Host to write to, the
+      // second would persist a section built on a read with holes in it.
+      return Promise.resolve()
+    }
     this.readGeneration += 1
     const generation = ++this.writeGeneration
     return this.enqueue(async () => {
@@ -195,6 +201,21 @@ export class SettingsScopeController<T> implements SettingsScope<T> {
   }
 
   private accept(view: SettingsNamespaceView, publish: boolean, writable?: boolean): void {
+    if (view.unprovable !== undefined && view.unprovable.length > 0) {
+      // The Host withheld subtrees it could not prove secret-free, so this
+      // value has holes its own schema does not explain. Editing it would
+      // write a section assembled from an incomplete read, so the scope goes
+      // unavailable and read-only instead of publishing it as ready.
+      this.store.update((draft) => {
+        draft.status = 'unavailable'
+        draft.writable = false
+        draft.value = undefined
+        draft.revision = view.revision
+        draft.base = undefined
+        draft.user = undefined
+      })
+      return
+    }
     const decoded = publish ? this.decode(view) : undefined
     this.store.update((draft) => {
       draft.revision = view.revision

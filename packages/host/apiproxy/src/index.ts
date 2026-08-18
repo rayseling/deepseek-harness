@@ -30,10 +30,28 @@ export type { IApiClient } from './fetch/client.ts'
 export { createApiProxy } from './api-proxy.ts'
 export type { ApiProxyDefaults } from './api-proxy.ts'
 
+/**
+ * The in-process API Proxy: the transport-agnostic {@link ApiProxy} dispatch
+ * face plus the Host-local capabilities only the service owns. Kept distinct
+ * from `ApiProxy` itself because a remote or fixture implementation serves the
+ * dispatch face without holding any deployment policy.
+ */
+export interface HostApiProxy extends ApiProxy {
+  /**
+   * Register the carrier's answer to "does this deployment serve the
+   * configuration plane to its trusted non-loopback authorities?", surfaced by
+   * `host.describe` as `remoteConfiguration`. One registration at a time — the
+   * carrier owns the policy; a second registrant is a composition error.
+   * @param provider - reads the live policy on every describe.
+   * @returns disposer that clears the registration.
+   */
+  provideRemoteConfiguration(provider: () => boolean): () => void
+}
+
 declare module '@deepseek-ai/cordis' {
   interface Context {
-    /** The host-side ApiProxy implementation (the transport-agnostic gateway face). */
-    apiProxy: ApiProxy
+    /** The host-side ApiProxy implementation (the transport-agnostic gateway face plus Host-local capabilities). */
+    apiProxy: HostApiProxy
   }
 }
 
@@ -66,7 +84,7 @@ export interface Config {
  * host context and provides it as `ctx.apiProxy`. The Host cwd is the default
  * project directory.
  */
-export class ApiProxyService extends Service implements ApiProxy {
+export class ApiProxyService extends Service implements HostApiProxy {
   static inject = [
     'agentDefaultModel', 'agents', 'attachments', 'directoryPicker', 'llm', 'sessions', 'subagents', 'sessionQuery',
     'tools', 'userQuestions', 'workspaceRegistry',
@@ -101,14 +119,6 @@ export class ApiProxyService extends Service implements ApiProxy {
    */
   private readonly remoteConfigurationSlot: { provider?: () => boolean } = {}
 
-  /**
-   * Register the carrier's answer to "does this deployment serve the
-   * configuration plane to its trusted non-loopback authorities?", surfaced
-   * by `host.describe` as `remoteConfiguration`. One registration at a time —
-   * the carrier owns the policy; a second registrant is a composition error.
-   * @param provider - reads the live policy on every describe.
-   * @returns disposer that clears the registration.
-   */
   provideRemoteConfiguration(provider: () => boolean): () => void {
     const slot = this.remoteConfigurationSlot
     if (slot.provider !== undefined) {

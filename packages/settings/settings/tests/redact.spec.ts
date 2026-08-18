@@ -153,6 +153,40 @@ describe('redactSecrets', () => {
     expect(unprovable).toEqual([])
   })
 
+  it('walks a recursive lazy schema without exhausting the stack', () => {
+    // z.lazy is how a recursive schema is expressed, so the search has to
+    // terminate on the cycle instead of expanding it forever.
+    const Recursive: z<object> = z.lazy(() => Node)
+    const Node: z<object> = z.object({ next: Recursive, token: z.string().role('secret') })
+    const bearing = redactSecrets(Recursive as z<never>, { next: {}, token: 'live-secret' })
+    // The whole root is withheld, so there is no value left to search.
+    expect(bearing.value).toBeUndefined()
+    expect(bearing.unprovable).toEqual([[]])
+
+    // A cycle on its own does not make a subtree secret-bearing.
+    const Plain: z<object> = z.lazy(() => z.object({ next: Plain, label: z.string() }))
+    const free = redactSecrets(Plain as z<never>, { next: {}, label: 'visible' })
+    expect(free.value).toEqual({ next: {}, label: 'visible' })
+    expect(free.unprovable).toEqual([])
+  })
+
+  it('withholds a dict whose KEY schema declares the secret', () => {
+    // The key names are the secret here, so they cannot ride `secrets` either:
+    // every entry in that sidecar names its own path.
+    const Keyed = z.object({ tokens: z.dict(z.string(), z.string().role('secret')) })
+    const { value, secrets, unprovable } = redactSecrets(Keyed as z<never>, {
+      tokens: { 'SECRET-DICT-KEY': 'visible' },
+    })
+    expect(JSON.stringify(value)).not.toContain('SECRET-DICT-KEY')
+    expect(value).toEqual({})
+    expect(secrets).toEqual([])
+    expect(unprovable).toEqual([['tokens']])
+
+    // An ordinary key schema keeps the dict readable.
+    const Plain = z.object({ tags: z.dict(z.string(), z.string()) })
+    expect(redactSecrets(Plain as z<never>, { tags: { a: 'keep' } }).value).toEqual({ tags: { a: 'keep' } })
+  })
+
   it('tolerates structural nodes missing their relation maps', () => {
     expect(redactSecrets({ type: 'dict' } as never, { k: 'v' }))
       .toEqual({ value: { k: 'v' }, secrets: [], unprovable: [] })

@@ -306,19 +306,14 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   },
   {
     key: 'apiProxy',
-    summary: 'Root interface of the unified API.',
-    description: 'Root interface of the unified API. New client-request domain = one new file pair + one field here + one map row.',
+    summary: 'The in-process API Proxy: the transport-agnostic ApiProxy dispatch face plus the Host-local capabilities only the service owns.',
+    description: 'The in-process API Proxy: the transport-agnostic ApiProxy dispatch face plus the Host-local capabilities only the service owns. Kept distinct from `ApiProxy` itself because a remote or fixture implementation serves the dispatch face without holding any deployment policy.',
     methods: [
       {
-        signature: 'downloads: DownloadsApi',
-        description: 'Host-only download surfaces (GET, no wire envelope); absent from IApiClient.',
-        parameters: [],
-      },
-      {
-        signature: 'respond(message: ClientResponse): Promise<RpcReceipt>',
-        description: 'Response entry for server requests; not a domain method.',
-        parameters: [{ name: 'message', description: 'Client response carrying the server request\'s rpcId.' }],
-        returns: 'Transport receipt for the response delivery.',
+        signature: 'provideRemoteConfiguration(provider: () => boolean): () => void',
+        description: 'Register the carrier\'s answer to "does this deployment serve the configuration plane to its trusted non-loopback authorities?", surfaced by `host.describe` as `remoteConfiguration`. One registration at a time — the carrier owns the policy; a second registrant is a composition error.',
+        parameters: [{ name: 'provider', description: 'reads the live policy on every describe.' }],
+        returns: 'disposer that clears the registration.',
       },
     ],
   },
@@ -2744,10 +2739,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface CancelOptions {\n    keepInbox?: boolean | undefined;\n}',
   },
   {
-    name: 'ClientResponse',
-    declaration: 'export interface ClientResponse {\n    type: \'client-response\';\n    rpcId: RpcId;\n    result: RpcResult<unknown>;\n}',
-  },
-  {
     name: 'CodeBindingErrorClass',
     declaration: 'export interface CodeBindingErrorClass {\n    name: string;\n    memberNameProperty: string;\n}',
   },
@@ -2998,10 +2989,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'DomainTableSpec',
     declaration: 'export interface DomainTableSpec<K extends string = string, V = unknown> {\n    readonly valueSchema: ZodType<V>;\n    readonly __key?: K;\n}',
-  },
-  {
-    name: 'DownloadsApi',
-    declaration: 'export interface DownloadsApi {\n    sessionLog(request: {\n        sessionId: SessionId;\n        includeDescendants?: boolean;\n    }, signal: AbortSignal): Promise<Response>;\n}',
   },
   {
     name: 'DshEnvironment',
@@ -3650,10 +3637,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'RpcId',
     declaration: 'export type RpcId = Branded<\'rpc-id\'>;',
-  },
-  {
-    name: 'RpcReceipt',
-    declaration: 'export type RpcReceipt = {\n    accepted: true;\n} | {\n    accepted: false;\n    reason: \'not-pending\' | \'bad-response\';\n};',
   },
   {
     name: 'RpcResult',

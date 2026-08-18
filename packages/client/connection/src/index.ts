@@ -171,19 +171,10 @@ export function apply(ctx: Context, config?: ConnectionConfig): void {
   // composition may settle it after this plugin applies, and a registration
   // made only at apply time would never reach it.
   ctx.inject(['apiProxy'], (proxyCtx) => {
-    const proxy = proxyCtx.get('apiProxy') as {
-      provideRemoteConfiguration?(provider: () => boolean): () => void
-    }
-    if (proxy.provideRemoteConfiguration === undefined) {
-      // Fail loud: a composition pairing this carrier with an API Proxy that
-      // cannot publish the capability would leave every remote page choosing
-      // process-local settings while the carrier answers the plane.
-      throw new Error('client-connection: apiProxy does not accept a remoteConfiguration provider')
-    }
     proxyCtx.effect(
       // Read through the service each time: the tracker proxy forwards the
       // property, and `this` must stay bound to the service instance.
-      () => proxy.provideRemoteConfiguration?.(() => privilegedHosts.length > 0) ?? (() => {}),
+      () => proxyCtx.apiProxy.provideRemoteConfiguration(() => privilegedHosts.length > 0),
       'client-connection: remote-configuration capability',
     )
   })

@@ -22,6 +22,8 @@ interface SchemaNode {
   inner?: SchemaNode
   /** `union`/`intersect` branches and `tuple` members. */
   list?: (SchemaNode | undefined)[]
+  /** `dict`'s KEY schema: a secret role here makes the key names themselves secret. */
+  sKey?: SchemaNode
   /**
    * `lazy`'s deferred child factory. Opaque here because schemastery's own
    * signature returns its `Schema` class; the result is read structurally.
@@ -63,7 +65,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Every nested schema a node holds, whichever container names it uses. A
+ * Every nested schema a node holds, whichever container names it uses. This is
+ * the single place schemastery's nesting relations are enumerated, so a
+ * relation added upstream is added once here rather than at each walk site. A
  * `lazy` node's child lives behind `builder` (its `inner` is a stand-in until
  * first validation), so the factory is called here — schemastery documents it
  * as pure construction.
@@ -77,6 +81,7 @@ function nested(node: SchemaNode): SchemaNode[] {
     ...built,
     ...node.list ?? [],
     ...Object.values(node.dict ?? {}),
+    node.sKey,
   ]
   return candidates.filter((candidate): candidate is SchemaNode => candidate !== undefined)
 }
@@ -96,12 +101,33 @@ function safeBuild(builder: () => unknown): (SchemaNode | undefined)[] {
 }
 
 /**
+ * Depth at which the search gives up and fails closed. A recursive schema whose
+ * builder returns a fresh tree on every call has no repeated identity to detect,
+ * so the visited set alone cannot terminate it; this bound does, and answering
+ * "a secret may hide here" keeps that case safe rather than hanging the Host
+ * answering a wire request. Far above any real settings schema's nesting.
+ */
+const MAX_SEARCH_DEPTH = 64
+
+/**
  * Whether a secret role sits anywhere under a node. Used only on nodes the
  * walker does not descend, where a positive answer means the value cannot be
  * proven free of secrets and must be withheld.
+ *
+ * Cycle-safe: `z.lazy` is how a recursive schema is expressed, so revisiting a
+ * node contributes nothing rather than recursing forever. A cycle alone never
+ * makes a subtree secret-bearing — only a secret role actually found does.
+ * @param node - the node to search under.
+ * @param seen - nodes already being searched on this path.
+ * @param depth - remaining descent before failing closed.
+ * @returns true when a secret role is reachable, or the search could not finish.
  */
-function hidesSecret(node: SchemaNode): boolean {
-  return node.meta?.role === 'secret' || nested(node).some(hidesSecret)
+function hidesSecret(node: SchemaNode, seen: Set<SchemaNode> = new Set(), depth = MAX_SEARCH_DEPTH): boolean {
+  if (node.meta?.role === 'secret') return true
+  if (depth <= 0) return true
+  if (seen.has(node)) return false
+  seen.add(node)
+  return nested(node).some(child => hidesSecret(child, seen, depth - 1))
 }
 
 interface WalkSink {
@@ -140,6 +166,14 @@ function walk(node: SchemaNode | undefined, value: unknown, path: string[], sink
       return source === undefined && Object.keys(rebuilt).length === 0 ? value : rebuilt
     }
     case 'dict': {
+      if (node.sKey !== undefined && hidesSecret(node.sKey)) {
+        // The KEY schema declares the secret, so the key names are the secret.
+        // They cannot go in `secrets` either — every entry there names its own
+        // path — so the whole dict is withheld and only its position reported.
+        if (value === undefined) return value
+        sink.unprovable.push(path)
+        return undefined
+      }
       if (!isRecord(value)) {
         if (value !== undefined && hidesSecret(node)) {
           sink.unprovable.push(path)

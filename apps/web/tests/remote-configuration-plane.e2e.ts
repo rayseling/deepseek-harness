@@ -9,6 +9,13 @@
  * `Host`, which is what makes a real non-loopback authority testable against a
  * server bound to 127.0.0.1.
  *
+ * The widened case exercises both shapes deliberately: the Models page, which
+ * calls `settings.describe` itself, and the Appearance row, which goes through
+ * `ctx.settingsScope.bind()` — the path that actually selects Host or
+ * process-local persistence from `canConfigure()`. Only the second one fails if
+ * that selection regresses, which is why the preference is written and survives
+ * a reload here.
+ *
  * Each case owns its scaffold start-to-finish. Two live scaffolds would each
  * have saved and restored the same process-level state (`DSH_HOME`, skill
  * roots), so overlapping them makes teardown restore a world the other one
@@ -170,10 +177,8 @@ describe.skipIf(MODE === 'record')('web e2e: configuration plane authority', () 
       expect(slots).toContain('providers.canary-gateway.headers.Authorization')
       expect(slots).toContain('providers.canary-gateway.headers.X-Org')
 
-      // The real Settings UI, not only the wire: the dialog opens, the Models
-      // page renders its live provider join, and the seeded provider appears —
-      // which only happens when the scope bound to Host persistence rather
-      // than falling back to process memory.
+      // The real Settings UI, not only the wire.
+      await page.emulateMedia({ colorScheme: 'light' })
       await page.getByRole('button', { name: 'Settings', exact: true }).click()
       const dialog = page.getByRole('dialog', { name: 'Settings' })
       await dialog.waitFor({ timeout: 15_000 })
@@ -182,6 +187,34 @@ describe.skipIf(MODE === 'record')('web e2e: configuration plane authority', () 
       // The key is configured, and the UI says so without ever holding it.
       const dom = await page.content()
       expect(dom).not.toContain(CANARY)
+
+      // The Appearance row is backed by `ctx.settingsScope.bind()`, the path
+      // this deployment posture actually changes: it selects Host or
+      // process-local persistence from `canConfigure()`. The Models page above
+      // reads `settings.describe` directly, so it would still render if that
+      // selection regressed — this does not. A remote page under the default
+      // posture keeps the preference in memory and loses it on reload; here it
+      // must come back from the Host, and be in the Host's document.
+      const isDark = async (): Promise<boolean> =>
+        await page.evaluate(() => document.body.hasAttribute('data-ds-dark-theme'))
+      expect(await isDark()).toBe(false)
+      // Back to General, where the Appearance cubes live.
+      await dialog.getByRole('button', { name: 'General' }).click()
+      const darkCube = dialog.getByRole('button', { name: 'Dark', exact: true })
+      await darkCube.waitFor({ timeout: 15_000 })
+      expect(await darkCube.getAttribute('aria-pressed')).toBe('false')
+      await darkCube.click()
+      await expect.poll(() => darkCube.getAttribute('aria-pressed'), { timeout: 15_000 }).toBe('true')
+      await expect.poll(isDark, { timeout: 15_000 }).toBe(true)
+      // The Host owns it now, not this tab.
+      await expect.poll(
+        () => scaffold.ctx.settings.get(settingsNamespace('ui-theme')),
+        { timeout: 15_000 },
+      ).toMatchObject({ preference: 'dark' })
+
+      await page.reload({ waitUntil: 'load' })
+      await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })
+      await expect.poll(isDark, { timeout: 15_000 }).toBe(true)
       expect(tripwire.pageErrors).toEqual([])
     })
     await page.close()

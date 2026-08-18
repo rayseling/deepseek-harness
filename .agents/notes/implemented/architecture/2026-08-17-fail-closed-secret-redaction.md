@@ -20,7 +20,11 @@ The walker fails closed on what it cannot descend. Its `default:` case now asks 
 
 The serialized schema is a wire value too. `sanitizeSchemaEnvelope` detaches `schema.toJSON()` and drops `default` and `initial` from every `role: 'secret'` ref, and `describe` applies it under redaction, so a secret field's declared default no longer rides the envelope past value redaction. The envelope's `refs` table is flat, which is why this reaches even the secret nodes the value walker cannot: a node buried in a union branch is still its own ref.
 
-`unprovable` is published rather than computed and dropped: it rides `SettingsDescriptor` and the wire view `SettingsNamespaceView`, omitted when empty, so a configuration surface can present such a namespace as not editable instead of trusting a value with silent holes.
+A `dict`'s KEY schema is a nesting relation too (`sKey`), and a secret role there makes the key NAMES the secret. Those cannot go in `secrets` — every entry in that sidecar names its own path, so listing them would publish exactly what was meant to stay hidden — and the whole dict is withheld with only its own position reported.
+
+The containment search is cycle-safe, because `z.lazy` is how a recursive schema is written and calling its builder expands the cycle forever otherwise. Revisiting a node contributes nothing, so a cycle alone never makes a subtree secret-bearing; only a secret role actually found does. A depth bound backs that up for a builder that returns a fresh tree on every call, where there is no repeated identity to detect: exhausting it answers "a secret may hide here", which keeps the Host from hanging on a wire request it cannot finish analysing.
+
+`unprovable` is published rather than computed and dropped: it rides `SettingsDescriptor` and the wire view `SettingsNamespaceView`, omitted when empty. The client is what refuses it — `SettingsScopeController` publishes such a namespace as `unavailable` and read-only and declines writes on it, so no form edits a value assembled from an incomplete read.
 
 `headers` becomes write-only on the wire: its element carries `role('secret')`, so a redacted `describe()` withholds every value while the key names ride the `secrets` sidecar, which is what lets a form render write-only inputs per header. Requests keep using the real values; only the described view is stripped. `apiKeyEnv` reference names stay readable, because a reference name is not a credential.
 
@@ -38,13 +42,15 @@ No described settings value can carry a `role('secret')` the redactor did not ac
 
 A configuration UI no longer shows existing header values for a pi-ai provider; it shows a write-only input per key. An operator who stored a credential in `headers` keeps a working route, and the credential stops being readable from the page. `apiKeyEnv` remains the way to name a credential that a form should show.
 
-`RedactedValue` gains a required `unprovable` member, so every caller destructuring the result sees it. What remains deferred is refusal itself: withholding a subtree and reporting its position is not the same as refusing the namespace, and nothing today acts on `unprovable` beyond carrying it.
+`RedactedValue` gains a required `unprovable` member, so every caller destructuring the result sees it. Refusal lives on the client rather than the Host: `describe` still answers a namespace carrying `unprovable`, and the scope controller is what makes it uneditable. A Host-side `describeForWire()` that never serves such a namespace, and that sanitizes error text, remains the fuller answer and is deferred.
 
 One channel stays open by construction and is recorded in the settings README: a key the schema does not declare rides the wire verbatim, because the object walker preserves keys outside the schema and nothing can classify what the schema never modeled. A credential belongs on a declared `role('secret')` field or behind an `apiKeyEnv`-style reference.
 
 ## Testing
 
 `packages/settings/settings/tests/redact.spec.ts` proves the withholding on both unwalked shapes: a secret inside one `union` branch and a secret under a `transform` are absent from the value — asserted by searching the serialized value for the live string, not only by shape — and each reports its path in `unprovable`. A companion case pins the non-regression that makes the discriminator worth having: a literal-enum `union` beside a plain number is returned unchanged, with both `secrets` and `unprovable` empty.
+
+A recursive `z.lazy` schema is covered in both directions — one carrying a secret is withheld and reported without exhausting the stack, and one that merely recurses returns its value — and a `dict` whose KEY schema declares the secret is withheld with the key name absent from the value and from `secrets`, while an ordinary key schema keeps the dict readable.
 
 Two more cases cover the positions found after the first pass: a secret behind a `lazy` builder is withheld while a `lazy` schema with nothing secret under it still returns its value, and a malformed value under the secret-bearing containers is withheld with both paths reported while the same malformation under a secret-free schema passes through. Descriptor-level cases pin the envelope and the published member: a secret's `.default(...)` is absent from the serialized schema of a redacted describe (including one declared inside a union branch) while an ordinary field's default survives, the unredacted internal read still carries it, and a namespace whose secret sits under a union reports `unprovable` while a clean namespace omits the member.
 

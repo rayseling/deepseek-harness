@@ -11,8 +11,10 @@
 export interface SettingsScopeSnapshot<T> {
   /**
    * `loading` until the first accepted section, `ready` while one stands, and
-   * `unavailable` when the namespace is not exposed to this client or the
-   * connection keeps preferences process-local (memory mode).
+   * `unavailable` when the namespace is not exposed to this client, the
+   * connection keeps preferences process-local (memory mode), or the Host could
+   * not prove the value free of secrets (`unprovable` on its wire view) — an
+   * incomplete value is never presented as one a form may edit.
    */
   status: 'loading' | 'ready' | 'unavailable'
   /** Last accepted schema-resolved section; undefined before the first acceptance. */

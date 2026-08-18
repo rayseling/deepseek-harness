@@ -16,5 +16,5 @@
 
 ## 已知限制与暂缓事项
 
-- **远程浏览器没有持久化设置**：设置 RPC 仅限 loopback，因此在非 loopback 浏览器中绑定的 scope 以 `unavailable` 起步且从不跨线路，它支撑的每一行在那里都是无效的。
+- **远程浏览器的设置跟随部署姿态**：scope 依据 `connection.canConfigure()` 选择 Host 或仅本进程的持久化——即回环，或握手报出的 `remoteConfiguration` capability，并在每次 load 时重读，因此该 capability 抵达时页面会随之升级。在既定的仅回环默认值下，非回环浏览器仍以 `unavailable` 起步，它支撑的每一行在那里都是无效的。而 Host 视图携带 `unprovable` 的 namespace 无论出自哪个授权，都会落入同一个 `unavailable`、拒绝写入的状态。
 - **每次写入仅一个字段**：`set` 只发送单个 `set` op，因此需要同时改动两个字段的行没有事务可用，会发布两个 revision。

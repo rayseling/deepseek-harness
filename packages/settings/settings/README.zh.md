@@ -42,5 +42,5 @@
 
 - **单一用户层** — 解析只认识 schema 默认值、一个组合 `base` 与一个用户文档；它尚未记录每个解析值由哪一层提供。
 - **schema 未声明的键会原样上线**——对象 walker 会保留 schema 之外的键（来自更新版插件的字段，或一处笔误），因此脱敏无法对其分类，存放在其中的凭据会被原样返回。脱敏在构造上就是「按 schema 声明」的：把密钥建模为某个已声明字段上的 `role('secret')`，或建模为 `apiKeyEnv` 这类引用。
-- **`schema.toJSON()` 仍会把 secret 字段的 `.default(...)` 带给每个客户端**，而 `describe` 与 `register` 都不拒绝这样建模的 schema。值本身现在已是 fail-closed：walker 跟随 `object`/`dict`/`array`，而只能经由 `union`、`intersect`、`transform` 或 `tuple` 抵达的 `role('secret')` 会被整棵子树扣下，位置记录在 `unprovable` 中，因此没有任何调用方会收到一份其脱敏无法被证明的值。仍然延期的是暴露的那一半——一个 `describeForWire()`，它会直接拒绝这样的 namespace 而不是带着窟窿把它端出去，并且会净化序列化后的信封与错误文本。
+- **拒绝发生在客户端，而不是 Host** ——值本身已是 fail-closed：walker 跟随 `object`/`dict`/`array` 并把每个已声明的机密列入清单；而只能经由 `union`、`intersect`、`transform`、`tuple` 或 `lazy` builder 抵达的 `role('secret')`、位于畸形容器值之下的机密、以及声明在某个 `dict` 键 schema 上的机密，都会被整棵子树扣下，位置报进 `unprovable`。`sanitizeSchemaEnvelope` 还会从序列化 schema 的每条机密 ref 上剥掉 `default`/`initial`，因此机密声明的默认值不再随信封上线。延期的是 Host 侧的拒绝：`describe` 仍会答复一个携带 `unprovable` 的 namespace，只有客户端（`SettingsScopeController`）把它变成不可用、只读的 scope。一个会直接拒绝这类 namespace、并净化错误文本的 `describeForWire()`，仍然是更完整的答案。
 - **跨进程并发由提供方定义** — seam 仅在进程内按 namespace 串行化写入；跨进程并发按提供方行为收敛（本地文件提供方在写锁下读-改-写，因此 namespace 在并发写入者下不会丢失，同 namespace 冲突按后写胜出解决）。
