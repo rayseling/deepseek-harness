@@ -24,7 +24,7 @@ walker 对自己无法下降的东西 fail closed。它的 `default:` 分支现�
 
 包含性搜索是环安全的，因为 `z.lazy` 正是递归 schema 的写法，若不然调用它的 builder 会把环无限展开。重访一个节点不贡献任何结论，因此环本身永远不会让一棵子树成为「藏有机密」；只有真正找到的 secret role 才会。对于每次调用都返回一棵全新树、因而没有可检测的重复身份的 builder，还有一个深度上界兜底：耗尽它就回答「这里可能藏着机密」，从而不让 Host 卡在一个它分析不完的协议请求上。
 
-`unprovable` 是被发布出去的，而不是算完就丢：它随 `SettingsDescriptor` 与 wire 视图 `SettingsNamespaceView` 一起出去，为空时省略。真正拒绝它的是客户端——`SettingsScopeController` 会把这样的 namespace 发布为 `unavailable` 且只读，并拒绝对它的写入，因此没有任何表单会去编辑一份由不完整读取拼出的值。
+`unprovable` 是被发布出去的，而不是算完就丢：它随 `SettingsDescriptor` 与 wire 视图 `SettingsNamespaceView` 一起出去，为空时省略。客户端对它负什么责任，取决于该客户端怎么写。以 scope 支撑的表层会拒绝它：`SettingsScopeController` 把这样的 namespace 发布为 `unavailable` 且只读、并拒绝写入，因为它解析的是一整段，会把一段建立在不完整读取之上的内容持久化。而路径寻址的表单——Models 各页——继续编辑它，且无需该检查即安全：`pathOps` 只点名卡片实际观察到的字段，因此被扣下的子树在它差量的两侧都不存在，没有任何 op 会 set 或 unset 它。
 
 `headers` 在协议上变为只写：其元素带 `role('secret')`，所以脱敏后的 `describe()` 扣下每一个值，而键名走 `secrets` 附带清单——正是这一点让表单能为每个 header 渲染只写输入框。真实请求继续使用真实值，只有被描述的视图被剥离。`apiKeyEnv` 的引用名保持可读，因为引用名不是凭据。
 

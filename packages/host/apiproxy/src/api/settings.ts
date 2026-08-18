@@ -36,10 +36,14 @@ export interface SettingsNamespaceView {
    * Positions whose redaction could not be proven: those subtrees are
    * withheld from every layer above, so the value has holes the schema does
    * not explain. Absent when every secret was addressable. This method still
-   * answers such a namespace; the client is what refuses it —
-   * `SettingsScopeController` publishes it as unavailable and read-only and
-   * declines writes, so no form edits a value assembled from an incomplete
-   * read.
+   * answers such a namespace, and what a client does with it depends on how it
+   * writes. A scope-backed surface refuses it: `SettingsScopeController`
+   * publishes it unavailable and read-only and declines writes, because it
+   * would otherwise persist a section resolved from an incomplete read. A
+   * path-addressed form (the Models pages) keeps editing it, which is safe by
+   * construction — its ops name only the fields it observed, so a withheld
+   * subtree is absent from both sides of the diff and nothing sets or unsets
+   * it.
    */
   unprovable?: string[][]
   /**
