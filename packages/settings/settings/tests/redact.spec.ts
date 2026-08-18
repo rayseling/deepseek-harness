@@ -168,6 +168,22 @@ describe('redactSecrets', () => {
     const free = redactSecrets(Plain as z<never>, { next: {}, label: 'visible' })
     expect(free.value).toEqual({ next: {}, label: 'visible' })
     expect(free.unprovable).toEqual([])
+
+    // The cycle can close through any relation, not just an object property:
+    // a tree recurses through `array`, and a self-referential union through
+    // `list`. Each reaches the lazy node by a different path into `nested()`.
+    const Tree: z<object> = z.object({
+      name: z.string(),
+      children: z.array(z.lazy(() => Tree)),
+    })
+    const tree = redactSecrets(Tree as z<never>, { name: 'root', children: [{ name: 'leaf', children: [] }] })
+    expect(tree.value).toEqual({ name: 'root', children: [{ name: 'leaf', children: [] }] })
+    expect(tree.unprovable).toEqual([])
+
+    const SelfUnion: z<unknown> = z.union([z.string(), z.lazy(() => SelfUnion)])
+    const union = redactSecrets(z.object({ u: SelfUnion }) as z<never>, { u: 'visible' })
+    expect(union.value).toEqual({ u: 'visible' })
+    expect(union.unprovable).toEqual([])
   })
 
   it('withholds a dict whose KEY schema declares the secret', () => {

@@ -50,7 +50,7 @@ walker 对自己无法下降的东西 fail closed。它的 `default:` 分支现�
 
 `packages/settings/settings/tests/redact.spec.ts` 对两种走不进去的形态都证明了扣下：藏在某个 `union` 分支里的 secret、以及位于 `transform` 之下的 secret，都不出现在值里——断言方式是在序列化后的值里搜索那个真实字符串，而不只是比对结构——并且各自把路径报进 `unprovable`。配套用例钉住让这个判据值得存在的非回归：一个字面量枚举 `union` 与一个普通数字并列时原样返回，`secrets` 与 `unprovable` 都为空。
 
-递归的 `z.lazy` schema 在两个方向上都有覆盖——带机密的那个会被扣下并报出位置，且不耗尽调用栈；仅仅递归的那个照常返回它的值；而键 schema 声明了机密的 `dict` 会被扣下，键名既不出现在值里、也不出现在 `secrets` 里，普通键 schema 则让该 dict 保持可读。
+递归的 `z.lazy` schema 在两个方向上都有覆盖——带机密的那个会被扣下并报出位置，且不耗尽调用栈；仅仅递归的那个照常返回它的值；覆盖也遍及环可以闭合的每一条关系：对象属性、`array` 元素（递归树就是这个形状）、以及 `union` 分支，因为它们各自经由不同的路径抵达那个 lazy 节点；而键 schema 声明了机密的 `dict` 会被扣下，键名既不出现在值里、也不出现在 `secrets` 里，普通键 schema 则让该 dict 保持可读。
 
 另有两个用例覆盖第一轮之后才发现的位置：藏在 `lazy` builder 之后的 secret 会被扣下，而其下没有任何 secret 的 `lazy` schema 仍然返回它的值；带 secret 的容器下的畸形值会被扣下并报出两条路径，而同样的畸形若所属 schema 不含 secret 则原样通过。descriptor 层面的用例钉住信封与被发布的成员：脱敏后 describe 的序列化 schema 里不含 secret 的 `.default(...)`（包括声明在某个 union 分支内部的那一个），而普通字段的默认值仍在；未脱敏的内部读取仍然带着它；secret 位于 union 之下的 namespace 会报出 `unprovable`，而干净的 namespace 省略该成员。
 
