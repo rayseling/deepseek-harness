@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-17-configuration-plane-authority.md
-2026-08-17-configuration-plane-authority.md: b463519940ecbf9c901eebb7122597a53095e063
-2026-08-17-configuration-plane-authority.zh.md: 07afc3b1ed896b6d97d2acb32872cb9242974283
+2026-08-17-configuration-plane-authority.md: 6a0f8aba9f1d32c92d8eff3670b3971fd3327365
+2026-08-17-configuration-plane-authority.zh.md: d7780a578447b3617fbde81666a48e21a3125ecc

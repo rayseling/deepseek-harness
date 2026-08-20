@@ -70,7 +70,7 @@ export interface ConnectionHandle {
    * callers re-evaluate on description changes rather than caching.
    */
   canConfigure(): boolean
-  /** Generation-scoped Host facts, including native path-open capability. */
+  /** Generation-scoped Host facts, including the account home and native path-open capability. */
   readonly hostDescription: HostDescriptionSource
   /** Generic logical RPC channels over the same Connection transport. */
   readonly rpc: ClientConnectionRpc

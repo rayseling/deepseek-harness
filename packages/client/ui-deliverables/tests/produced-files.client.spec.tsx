@@ -286,7 +286,7 @@ describe('ProducedFiles row', () => {
   ): Pick<ProducedFilesProps, 'isLoopback' | 'useHostDescription'> => {
     const description = canOpenPath === undefined
       ? undefined
-      : { version: 'test', cwd: '/workspace', attachedSessions: 1, canOpenPath, remoteConfiguration: false }
+      : { version: 'test', cwd: '/workspace', attachedSessions: 1, home: '/h', canOpenPath, remoteConfiguration: false }
     return {
       isLoopback,
       useHostDescription: selector => selector(description),

@@ -84,6 +84,25 @@ describe('connection client apply', () => {
     expect((await mount()).isLoopback).toBe(false)
   })
 
+  it('answers the configuration plane on loopback, and off it only when the Host widens', async () => {
+    // Loopback answers before any handshake: the page is the same machine.
+    ;(globalThis as Win).location = { hostname: 'localhost', search: '?fixture' }
+    expect((await mount()).canConfigure()).toBe(true)
+
+    // Off loopback the page starts closed, and stays closed under a Host that
+    // did not widen. The widened arm needs a real Host that reports it, and is
+    // pinned end to end by apps/web/tests/remote-configuration-plane.e2e.ts.
+    ;(globalThis as Win).location = { hostname: '192.0.2.20', search: '?fixture' }
+    const remote = await mount()
+    expect(remote.canConfigure()).toBe(false)
+    const loop = remote.start({})
+    await vi.waitFor(() => {
+      expect(remote.hostDescription.getSnapshot()?.remoteConfiguration).toBe(false)
+    })
+    expect(remote.canConfigure()).toBe(false)
+    loop.stop()
+  })
+
   it('start() hands out one loop, rejects a second consumer, and stop() aborts the streams', async () => {
     ;(globalThis as Win).location = { hostname: 'localhost', search: '?fixture' }
     const handle = await mount()

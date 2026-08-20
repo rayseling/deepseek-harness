@@ -72,7 +72,7 @@ function scriptedApi(overrides: {
     },
     host: {
       describe: r => ok(r, {
-        version: '0-test', cwd: '/t', attachedSessions: 0, canOpenPath: true, remoteConfiguration: false,
+        version: '0-test', cwd: '/t', attachedSessions: 0, home: '/h', canOpenPath: true, remoteConfiguration: false,
       }),
       pickDirectory: r => ok(r, { path: null }),
       listDirectory: r => ok(r, { path: '/t', home: '/t', crumbs: [], entries: [], truncated: false }),

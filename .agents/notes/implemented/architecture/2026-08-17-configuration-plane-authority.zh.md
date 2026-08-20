@@ -16,7 +16,7 @@ Status: implemented
 
 该字段只管辖 {@link PRIVILEGED_METHODS}，别的都不管。通用 Connection 通道声明的 `authority: 'loopback'` 无论本字段怎么设，都继续以空表通过栅栏，因为这两者的所有者不同：特权方法集合属于本包，策略也属于本包；而 `authority: 'loopback'` 是*其作者自己写下的要求*。一个悄悄放宽别的包已声明要求的部署字段，会让那份声明变得毫无意义，而未来的消费者可能因此获得它从未接受过的远程调用方。
 
-放宽载体只是一半，浏览器还得知道这件事。`host.describe` 报出 `remoteConfiguration`，由持有该策略的载体注册；客户端的 `ConnectionHandle` 暴露 `canConfigure()`——回环，或者这项 capability。设置的持久化与欢迎提示的确认改为经这次调用选择模式，而不是看页面 hostname，并且每次 load 都重读，因此远程页面会在握手抵达时从「仅本进程」升级为 Host，而不是在构造时就被钉死。没有它，载体会答复 `settings.describe`，而每个远程页面仍旧只往内存里写——那是一个谁都用不上的「已放宽」平面。`settings.openDocument` 刻意仍以 `isLoopback` 为准：原生编辑器开在宿主屏幕上，远程操作者没有任何东西可看。
+放宽载体只是一半，浏览器还得知道这件事。`host.describe` 报出 `remoteConfiguration`，由持有该策略的载体注册；客户端的 `ConnectionHandle` 暴露 `canConfigure()`——回环，或者这项 capability。共享的设置 describe 镜像改为经这次调用选择模式，而不是看页面 hostname：它在每次读取入口重读，并在 Host description 抵达时采纳，因此远程页面会随握手从「仅本进程」升级为 Host，而不是在构造时就被钉死；包括欢迎提示确认在内的每个派生 scope，模式都取自这一个镜像。没有它，载体会答复 `settings.describe`，而每个远程页面仍旧只往内存里写——那是一个谁都用不上的「已放宽」平面。`settings.openDocument` 刻意仍以 `isLoopback` 为准：原生编辑器开在宿主屏幕上，远程操作者没有任何东西可看。
 
 注册需要两个机制，两个都是先做错了才弄清的。它经 `ctx.inject(['apiProxy'])`：`apiProxy` 对本插件是可选依赖，在 apply 时一次性 `ctx.get` 会漏掉稍后才就绪的行。以及载体写入的那个槽位不能是 `#` 私有字段：本服务是经 cordis 的 tracker proxy 抵达的，该代理转发属性读取、但不转发私有字段写入，于是 `describe` 读到的是一个对象、而注册改动的是另一个。现在它是一个原地改动的稳定对象——正是 [packages/AGENTS.md](../../../../packages/AGENTS.md) 就服务状态点名过的那个陷阱。
 

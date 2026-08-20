@@ -41,6 +41,7 @@ export interface HostApi {
    * applied when a new agent doesn't specify them explicitly, absent when the host configures
    * no explicit default (the adapter falls back internally);
    * attachedSessions = count of currently attached sessions (those with a live agent);
+   * home = the host account home directory (Web display abbreviation on POSIX);
    * canOpenPath = whether this deployment can hand a path to a user-visible native desktop;
    * remoteConfiguration = whether this deployment answers the configuration plane
    * (settings/credentials/model discovery/preset authoring) to its trusted
@@ -53,6 +54,7 @@ export interface HostApi {
     provider?: string
     model?: string
     attachedSessions: number
+    home: string
     canOpenPath: boolean
     remoteConfiguration: boolean
   }>>
