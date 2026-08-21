@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-07-30-config-plane-boundaries.md
 2026-07-30-config-plane-boundaries.md: 9fb6b59c058dfbdd3a3e2a5320d933d39e67ad62
-2026-07-30-config-plane-boundaries.zh.md: 31189118db0b78579d167aa4bde4b2b3a0997b58
+2026-07-30-config-plane-boundaries.zh.md: c1773b86866e4ccd9b1c4d62edf2c0e396264923

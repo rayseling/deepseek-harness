@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-17-insecure-origin-uuid-minting.md
 2026-08-17-insecure-origin-uuid-minting.md: d44df00901391e8f18c4e52788ba69b5c7e6a76f
-2026-08-17-insecure-origin-uuid-minting.zh.md: b1127cf4bf53b356a6c62f5eee6c5ebec81c9527
+2026-08-17-insecure-origin-uuid-minting.zh.md: 3f1fcbd20aba44bdf09929d58814973f497275e1

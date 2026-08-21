@@ -6,7 +6,7 @@ Status: proposed
 
 ## 问题
 
-Host API Proxy 仍承载许多一元方法。这些方法的实现仅执行服务查找、参数投影、一次业务调用和响应投影。尽管 [Typert Remote 调用](../../implemented/architecture/2026-08-02-typert-remote-method-calls.md)已经允许业务包承载此类调用，这种做法仍会在业务服务、API Proxy 接口、Zod schema、路由表、客户端 stub 和 Client 调用方之间重复定义同一约定。
+Host API Proxy 仍承载许多一元方法。这些方法的实现仅执行服务查找、参数投影、一次业务调用和响应投影。尽管 [Typert Remote 调用](../../implemented/architecture/2026-08-02-typert-remote-method-calls.zh.md)已经允许业务包承载此类调用，这种做法仍会在业务服务、API Proxy 接口、Zod schema、路由表、客户端 stub 和 Client 调用方之间重复定义同一约定。
 
 仅机械迁移方法并不足够。与 Agent 绑定的 API Proxy 方法会调用 `agentFor()`：它复用 live Agent，使用普通冷 Session 中记录的 preset 恢复该 Session，对并发恢复去重，并拒绝由 subagent 拥有的 identity。如果 Remote 方法以不同方式解析 `Agent` 或 `Session`，即使最终业务调用看起来相同，也会改变生命周期行为。
 
@@ -108,7 +108,7 @@ Connection 必须在选择 Typert interceptor 或 API Proxy 回退路径之前�
 - 迁移表中的每个方法都可通过表中列出的 `ctx.remote` 服务调用，并且不存在生产环境中的旧版 API Proxy 路由、schema、映射表行、客户端 stub 或调用。
 - 签名匹配的现有方法直接带有 `@Remote`；每个新增方法都执行表中所述的适配，且不保留只做恒等转发的 `remote*` 包装层。
 - Agent／Session 集成测试证明共享 lookup 的各项结果，subagent 中断测试证明不会发生冷恢复。
-- 已迁移的特权端点解析权限的方式与未迁移的名称完全一致——即 `privilegedAuthority` 选定的授权，默认仅限环回（[配置面按需跟随 trustedHosts](../../implemented/architecture/2026-08-17-configuration-plane-authority.md)）——且该判定在任一分发路径运行前完成。非扩权是以该字段为准衡量的，而不是以环回作为常量。
+- 已迁移的特权端点解析权限的方式与未迁移的名称完全一致——即 `privilegedAuthority` 选定的授权，默认仅限环回（[配置面按需跟随 trustedHosts](../../implemented/architecture/2026-08-17-configuration-plane-authority.zh.md)）——且该判定在任一分发路径运行前完成。非扩权是以该字段为准衡量的，而不是以环回作为常量。
 - 每项已迁移调用的 Client 行为和立即提交状态的行为保持等价，包括支持取消之处的取消行为。
 - 暂缓迁移的方法及其现有行为仍保留在 API Proxy 上。
 - 一次从干净状态开始的生成与构建会生成并消费所选的每项 Remote 贡献，且聚焦测试和最终仓库门禁均通过。
@@ -121,4 +121,4 @@ Connection 必须在选择 Typert interceptor 或 API Proxy 回退路径之前�
 
 将权限强制执行移至复合分发会改变安全敏感的载体代码。测试必须覆盖一个由 Remote 拥有的端点和一个旧版回退端点，确保两条路径都无法绕过环回判定。
 
-本文应用现有 Typert Remote 架构，而非取代它。本文部分取代 [GUI RPC 协议笔记](../../implemented/architecture/2026-07-19-gui-layering-and-rpc-protocol.md)中的中央一元调用所有权和五步扩展检查清单，以及 [Web 配置平面笔记](../../implemented/architecture/2026-07-30-web-config-plane.md)中的中央接线清单；对于已迁移方法之外的 Connection envelope 和配置行为，这些笔记仍具权威性。标题、命令、配置边界、subagent 中断和归档笔记继续负责各自的业务行为，只需如实更新传输相关事实，无需归档。[浏览器信任边界](../../implemented/architecture/2026-07-28-api-browser-trust-boundary.md)和[生成约定构建顺序](../../implemented/process/2026-08-08-api-remotes-generated-contract-build.md)仍具权威性，无需执行归档操作。
+本文应用现有 Typert Remote 架构，而非取代它。本文部分取代 [GUI RPC 协议笔记](../../implemented/architecture/2026-07-19-gui-layering-and-rpc-protocol.zh.md)中的中央一元调用所有权和五步扩展检查清单，以及 [Web 配置平面笔记](../../implemented/architecture/2026-07-30-web-config-plane.zh.md)中的中央接线清单；对于已迁移方法之外的 Connection envelope 和配置行为，这些笔记仍具权威性。标题、命令、配置边界、subagent 中断和归档笔记继续负责各自的业务行为，只需如实更新传输相关事实，无需归档。[浏览器信任边界](../../implemented/architecture/2026-07-28-api-browser-trust-boundary.zh.md)和[生成约定构建顺序](../../implemented/process/2026-08-08-api-remotes-generated-contract-build.zh.md)仍具权威性，无需执行归档操作。

@@ -4,9 +4,9 @@ Status: implemented
 
 [English](2026-07-30-config-plane-boundaries.md) | 中文
 
-> 范围：对 [Web 配置面](2026-07-30-web-config-plane.md)的边界加固——哪些 namespace 能抵达协议、哪些调用方能抵达它们，以及一个只持有局部且可能陈旧的视图的编辑器该如何写入，才不会毁掉它看不见的东西。
+> 范围：对 [Web 配置面](2026-07-30-web-config-plane.zh.md)的边界加固——哪些 namespace 能抵达协议、哪些调用方能抵达它们，以及一个只持有局部且可能陈旧的视图的编辑器该如何写入，才不会毁掉它看不见的东西。
 
-> 调用方边界、脱敏与 revision 设栅依然有效。把「哪些 namespace 能抵达协议」限制为可配置提供方目录这一条，已被[由插件自己拥有的设置表层](2026-08-12-plugin-owned-settings-surface.md)取代——后者服务每一个已注册的 namespace。
+> 调用方边界、脱敏与 revision 设栅依然有效。把「哪些 namespace 能抵达协议」限制为可配置提供方目录这一条，已被[由插件自己拥有的设置表层](2026-08-12-plugin-owned-settings-surface.zh.md)取代——后者服务每一个已注册的 namespace。
 
 ## 问题
 
@@ -20,7 +20,7 @@ Status: implemented
 
 ## 决策
 
-**读取配置与写入配置同样属于特权操作。**`settings.describe` 与 `credentials.describe` 加入特权集合，因此整个配置面默认只答复回环 Host——某个部署可以把它放宽到自己已声明的授权，而那依然不是认证（[配置面按需跟随 trustedHosts](2026-08-17-configuration-plane-authority.md)）。模型目录（`llm.providers`、`llm.models`）刻意不在其中：它携带的是提供方 id、显示名与模型列表——没有端点、没有密钥状态——而 LAN 客户端的模型选择器正需要它。这条边界由一台真实 HTTP 服务器来断言，而不是手工拼装的请求，因为真正决定它的，是浏览器实际发出的那个 `Host` 头。
+**读取配置与写入配置同样属于特权操作。**`settings.describe` 与 `credentials.describe` 加入特权集合，因此整个配置面默认只答复回环 Host——某个部署可以把它放宽到自己已声明的授权，而那依然不是认证（[配置面按需跟随 trustedHosts](2026-08-17-configuration-plane-authority.zh.md)）。模型目录（`llm.providers`、`llm.models`）刻意不在其中：它携带的是提供方 id、显示名与模型列表——没有端点、没有密钥状态——而 LAN 客户端的模型选择器正需要它。这条边界由一台真实 HTTP 服务器来断言，而不是手工拼装的请求，因为真正决定它的，是浏览器实际发出的那个 `Host` 头。
 
 **这个面恰好服务于已注册模型提供方所指向的那些 namespace。**`ctx.llm.listConfigurableProviders()` 就是允许列表，于是产品边界是被执行的，而不是从今天的插件集合里推断出来的；将来的 namespace 只有加入该目录才会变得可在 Web 上配置。未注册的 namespace 与未暴露的 namespace 得到完全相同的答复（`settings-not-exposed`），因此探测无法枚举注册表。
 
@@ -36,8 +36,8 @@ Status: implemented
 - **在 `settings.register()` 处 opt-in metadata**——语义最正（由 namespace 的属主自行声明其暴露与否），改动也最大：seam 的公共接口、两个 LLM（大语言模型）插件，以及它们的文档。记录为：一旦某个非 LLM 的 namespace 确实需要这个面，就采用这个形状。
 - **区分「未注册」与「已注册但未暴露」**——诊断更好，同时也是一台 namespace 枚举预言机。统一答复是刻意为之。
 - **用 diff 而非 revision 来检测冲突**——对整分节写入而言，拿提交时的基线与存储比对是可行的，但编辑器持有的是**脱敏后**的分节：它给不出可比对的基线，这与它不能安全地 `replace` 是同一个原因。计数器两者都不需要。
-- **在这里就修掉脱敏的缺口**——协议回传内容上的五处缺陷属于脱敏本身，而不属于一次边界改动：只能经由 union、intersection、transform 或 tuple 抵达的机密；`schema.toJSON()` 里 secret 字段的 `.default(...)`；可能引用了输入的写入拒绝文本；客户端通过 schemastery 的 `new Function` 重建信封；以及 pi-ai 那个纯字符串的 `headers` 字典，它完全可以合法地放下 `Authorization`。跟着这次边界改动一并处理，只会把每一处都修一半。值的保证归[按 fail-closed 脱敏](2026-08-17-fail-closed-secret-redaction.md)：无法证明已脱敏的子树会被扣下，位置在 `unprovable` 中公布；pi-ai 的 `headers` 元素带上 `role('secret')`，因此 header 值在协议上只写；脱敏路径还会净化 `schema.toJSON()` 信封。拒绝文本与可执行信封仍留在各属主 README 的 Known Limitations 里。
+- **在这里就修掉脱敏的缺口**——协议回传内容上的五处缺陷属于脱敏本身，而不属于一次边界改动：只能经由 union、intersection、transform 或 tuple 抵达的机密；`schema.toJSON()` 里 secret 字段的 `.default(...)`；可能引用了输入的写入拒绝文本；客户端通过 schemastery 的 `new Function` 重建信封；以及 pi-ai 那个纯字符串的 `headers` 字典，它完全可以合法地放下 `Authorization`。跟着这次边界改动一并处理，只会把每一处都修一半。值的保证归[按 fail-closed 脱敏](2026-08-17-fail-closed-secret-redaction.zh.md)：无法证明已脱敏的子树会被扣下，位置在 `unprovable` 中公布；pi-ai 的 `headers` 元素带上 `role('secret')`，因此 header 值在协议上只写；脱敏路径还会净化 `schema.toJSON()` 信封。拒绝文本与可执行信封仍留在各属主 README 的 Known Limitations 里。
 
 ## 影响
 
-在默认姿态下，`trustedHosts` 部署上的 LAN 客户端无法渲染设置页；除非该部署设置了 `privilegedAuthority`，配置表层就是回环（[配置面按需跟随 trustedHosts](2026-08-17-configuration-plane-authority.md)）。注册了 settings namespace 的插件，在它同时注册可配置提供方之前不会变得可在 Web 上配置——这是刻意的，也正是 `settings-not-exposed` 要在消息里点明这条边界的原因。`SettingsDescriptor` 新增了必填的 `revision`，因此以编程方式构造 descriptor 形状值的地方都必须提供它；`settings/document-updated` 是一个新事件，提供方侧的任何 listener 现在都可以观察它。忽略 `expectedRevision` 的客户端，其后写胜出的语义完全不变。延后事项：一个宁可整体拒绝 unprovable namespace、也不端出带空洞值的协议 describe（[按 fail-closed 脱敏](2026-08-17-fail-closed-secret-redaction.md)只报出位置，并不拒绝），以及一套不含可执行代码的浏览器 schema 协议。
+在默认姿态下，`trustedHosts` 部署上的 LAN 客户端无法渲染设置页；除非该部署设置了 `privilegedAuthority`，配置表层就是回环（[配置面按需跟随 trustedHosts](2026-08-17-configuration-plane-authority.zh.md)）。注册了 settings namespace 的插件，在它同时注册可配置提供方之前不会变得可在 Web 上配置——这是刻意的，也正是 `settings-not-exposed` 要在消息里点明这条边界的原因。`SettingsDescriptor` 新增了必填的 `revision`，因此以编程方式构造 descriptor 形状值的地方都必须提供它；`settings/document-updated` 是一个新事件，提供方侧的任何 listener 现在都可以观察它。忽略 `expectedRevision` 的客户端，其后写胜出的语义完全不变。延后事项：一个宁可整体拒绝 unprovable namespace、也不端出带空洞值的协议 describe（[按 fail-closed 脱敏](2026-08-17-fail-closed-secret-redaction.zh.md)只报出位置，并不拒绝），以及一套不含可执行代码的浏览器 schema 协议。

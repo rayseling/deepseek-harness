@@ -159,7 +159,7 @@ interface SettingsDescribeOptions {
 }
 ```
 
-脱敏是结构性的，并且 fail-closed：被描述的值不可能携带一条脱敏器没有交代的 `role('secret')`（[fail-closed 机密脱敏](../../.agents/notes/implemented/architecture/2026-08-17-fail-closed-secret-redaction.md)）。浏览器页面无论由哪个授权提供，都是一条协议边界，而部署方可以让配置平面回应自己声明的 `trustedHosts`，而不只是回环（[配置平面授权](../../.agents/notes/implemented/architecture/2026-08-17-configuration-plane-authority.md)）。
+脱敏是结构性的，并且 fail-closed：被描述的值不可能携带一条脱敏器没有交代的 `role('secret')`（[fail-closed 机密脱敏](../../.agents/notes/implemented/architecture/2026-08-17-fail-closed-secret-redaction.zh.md)）。浏览器页面无论由哪个授权提供，都是一条协议边界，而部署方可以让配置平面回应自己声明的 `trustedHosts`，而不只是回环（[配置平面授权](../../.agents/notes/implemented/architecture/2026-08-17-configuration-plane-authority.zh.md)）。
 
 walker 会下降进 `object`、`dict` 与 `array`，移除其中每个已声明的机密字段并列入 `secrets`。凡是它无法判断具体值落在哪个位置的地方（子树中声明了机密的 `union`、`intersect`、`transform` 或 `tuple`；藏在 `lazy` builder 之后的机密字段；本该是容器却给了畸形值），它会把整棵子树从 `value`、`base` 与 `user` 中扣下，并把该位置记入 `unprovable`。不含机密的分支集合（字面量枚举就是其一）照原样通过；存储文档里有、而 schema 从未声明的键同样照原样通过：脱敏只覆盖已声明的位置。
 
@@ -184,7 +184,7 @@ type SettingsUpdateSource = 'update' | 'provider'
 
 ## Cordis API
 
-Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — this section is byte-identical in both language sides of the page. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
+Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.zh.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
 
 <a id="ctxsettings--settingsprovider-abstract-seam"></a>
 
@@ -269,7 +269,7 @@ async replace(ns: SettingsNamespace, section: object, expectedRevision?: number)
 async mutate(ns: SettingsNamespace, ops: readonly SettingsPathOp[], expectedRevision?: number): Promise<void>
 ```
 
-Source: [`packages/settings/settings/src/index.ts:357`](../../packages/settings/settings/src/index.ts)
+Source: [`packages/settings/settings/src/index.ts`](../../packages/settings/settings/src/index.ts)
 
 <a id="settings-events"></a>
 
@@ -296,7 +296,7 @@ One registered namespace's RAW user section changed, whether or not the resolved
 'settings/document-updated'(ns: SettingsNamespace, revision: number): void
 ```
 
-Source: [`packages/settings/settings/src/types.ts:48`](../../packages/settings/settings/src/types.ts)
+Source: [`packages/settings/settings/src/types.ts`](../../packages/settings/settings/src/types.ts)
 
 <a id="settingsupdated--emit"></a>
 
@@ -323,5 +323,5 @@ Committed change to one registered namespace's resolved value. Emitted after the
 'settings/updated'(ns: SettingsNamespace, next: unknown, prev: unknown, source: SettingsUpdateSource): void
 ```
 
-Source: [`packages/settings/settings/src/types.ts:35`](../../packages/settings/settings/src/types.ts)
+Source: [`packages/settings/settings/src/types.ts`](../../packages/settings/settings/src/types.ts)
 <!-- END GENERATED cordis-surface -->

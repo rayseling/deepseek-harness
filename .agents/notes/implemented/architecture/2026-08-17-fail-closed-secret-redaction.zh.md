@@ -10,7 +10,7 @@ Status: implemented
 
 第二条路径根本不需要「走不进去的容器」也会泄漏：`dsh-llm-pi-ai` 的 profile `headers` 是 `z.dict(z.string())`，所以操作者把 `Authorization: Bearer …` 或 `api-key` 存在那里，脱敏后的 `describe()` 会把它返回，配置界面还会渲染出来。walker 对 dict 的下降是正确的；只是根本没有 secret role 可找，因为 header 的值本身没有任何信息说明它是一条凭据。
 
-在配置面只答复回环 Host 的时候，这两者都还可以容忍。而把该平面的授权范围变为可配置（[配置面按需跟随 trustedHosts](2026-08-17-configuration-plane-authority.md)）之后，两者都变成了网络可达的凭据读取，而且前面放一层做认证的代理也修不了一份自身就携带密钥的响应。
+在配置面只答复回环 Host 的时候，这两者都还可以容忍。而把该平面的授权范围变为可配置（[配置面按需跟随 trustedHosts](2026-08-17-configuration-plane-authority.zh.md)）之后，两者都变成了网络可达的凭据读取，而且前面放一层做认证的代理也修不了一份自身就携带密钥的响应。
 
 ## 决定
 

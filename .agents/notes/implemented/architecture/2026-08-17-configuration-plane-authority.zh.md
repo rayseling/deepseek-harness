@@ -6,7 +6,7 @@ Status: implemented
 
 ## 问题
 
-特权方法集合——`settings.*`、`credentials.*`、`llm.discoverModels`、`host.pickDirectory`/`openPath` 以及 agent preset 的编写类方法——以空信任表通过 `/api` 信任栅栏，因此只有回环 Host 能抵达。这是[api 浏览器信任边界](2026-07-28-api-browser-trust-boundary.md)选定的姿态，依据是 `trustedHosts` 属于 DNS rebinding 防御而非认证；但它把这个选择写死了：那张空表是三个调用点上的字面量，部署方没有任何办法作出别的决定。
+特权方法集合——`settings.*`、`credentials.*`、`llm.discoverModels`、`host.pickDirectory`/`openPath` 以及 agent preset 的编写类方法——以空信任表通过 `/api` 信任栅栏，因此只有回环 Host 能抵达。这是[api 浏览器信任边界](2026-07-28-api-browser-trust-boundary.zh.md)选定的姿态，依据是 `trustedHosts` 属于 DNS rebinding 防御而非认证；但它把这个选择写死了：那张空表是三个调用点上的字面量，部署方没有任何办法作出别的决定。
 
 这让一套全接口部署处于半可用状态，而且不给操作者任何可权衡的东西。远程浏览器可以对话、可以跑工具——`session.prompt` 驱动的 agent 能运行 bash，这是整个面上后果最重的方法，而它从未被钉住——但模型设置页渲染不出来，因为 `settings.describe` 回 403，客户端报 `transport failure for /api/settings.describe: HTTP 403`。于是这条边界拒绝了「配置一个 provider 所需的读取」，却放行了「执行任意命令的方法」；而唯一的补救是换一条路重新抵达那台机器（SSH 隧道、改写 Host 的反向代理），或者在 fork 里把这个钉子拆掉。
 
@@ -36,11 +36,11 @@ Status: implemented
 
 设置了 `privilegedAuthority: 'trusted-hosts'` 的全接口部署，会把模型页与设置页、凭据录入、preset 编写以及目录选择器，提供给它所声明的那些授权。同一套部署若保持默认，那里仍然答 403，而用户读到的原因语句现在会点出这个字段。
 
-`host.pickDirectory` 能被远程浏览器抵达，是它对自身限制的诚实表达，而不是新坏掉的东西：原生选择器开在宿主屏幕上，这正是自适应选择器在全接口绑定下已经解析为 `browse` 的原因（[目录选择器的自适应默认值](../feature/2026-07-29-directory-picker-adaptive-default.md)）。一套既钉住原生选择器、又放宽本字段的部署，会得到一个没人站在跟前的对话框。
+`host.pickDirectory` 能被远程浏览器抵达，是它对自身限制的诚实表达，而不是新坏掉的东西：原生选择器开在宿主屏幕上，这正是自适应选择器在全接口绑定下已经解析为 `browse` 的原因（[目录选择器的自适应默认值](../feature/2026-07-29-directory-picker-adaptive-default.zh.md)）。一套既钉住原生选择器、又放宽本字段的部署，会得到一个没人站在跟前的对话框。
 
 认证方面没有任何改变，信任边界 Note 的威胁模型在两种模式下同样管辖：跨站请求、不透明源与被重绑的 Host 在 `trusted-hosts` 下与在 `loopback` 下同样被拒绝。要恢复更严的姿态，改的是一个字段，而不是回退一个补丁。
 
-正是放宽这个字段，把设置协议自身的脱敏缺口从「一台机器可达」变成了「一个网络可达」，所以值的保证必须先变成 fail-closed（[按 fail-closed 脱敏](2026-08-17-fail-closed-secret-redaction.md)）。把配置面提供给一个网络之所以站得住，只因为密钥已经不可能再随一份被描述的值流出。
+正是放宽这个字段，把设置协议自身的脱敏缺口从「一台机器可达」变成了「一个网络可达」，所以值的保证必须先变成 fail-closed（[按 fail-closed 脱敏](2026-08-17-fail-closed-secret-redaction.zh.md)）。把配置面提供给一个网络之所以站得住，只因为密钥已经不可能再随一份被描述的值流出。
 
 ## 测试
 

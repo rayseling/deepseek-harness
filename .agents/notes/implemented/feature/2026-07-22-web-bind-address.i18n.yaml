@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-07-22-web-bind-address.md
 2026-07-22-web-bind-address.md: 78bcdce41428113dcf2ce0c09c664881250f1c2a
-2026-07-22-web-bind-address.zh.md: 62faddf7d609634b347cd536519a76bad37c9168
+2026-07-22-web-bind-address.zh.md: 1c7e93f44314ff772645c4ce3d4c06d53a942072

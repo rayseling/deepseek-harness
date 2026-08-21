@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-07-30-web-config-plane.md
 2026-07-30-web-config-plane.md: a58957db5a4472e704f4b45486ff6de7c9a377f0
-2026-07-30-web-config-plane.zh.md: 9f181780c4577c5aa0e6380143df6b29ca893b63
+2026-07-30-web-config-plane.zh.md: 164128d3ea437f12b46c2a5014845668e362647d

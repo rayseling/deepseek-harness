@@ -3,4 +3,4 @@
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/simplification/2026-08-13-cli-refuses-wildcard-host.md
 2026-08-13-cli-refuses-wildcard-host.md: f47a19036075bf5e00d557266c3e1b5326b2100e
-2026-08-13-cli-refuses-wildcard-host.zh.md: 53d463a45ac619221a7a8f01790897b5bd690c04
+2026-08-13-cli-refuses-wildcard-host.zh.md: e7b982cb97209313a5545df9ed3ca80d804307df
