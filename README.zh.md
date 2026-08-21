@@ -6,7 +6,7 @@
 
 上游 `dsh` 是 [DeepSeek AI](https://deepseek.com) 开发的开源 agent harness（智能体框架），采用**一切皆插件**的架构，由 [Cordis](https://github.com/cordiverse/cordis) 驱动。上游文档在这里依然全部适用；本页只讲这个 fork 改了什么，以及怎样按这种方式运行它。
 
-这个 fork 以合并方式跟随上游，当前携带 `dsh-v0.1.1-rc.1`。它不向上游提交 pull request，因此下面的内容都未经上游项目评审；上游的开发者预览警告同样成立：**未来将出现破坏兼容性的变更。**
+这个 fork 以合并方式跟随上游，当前携带 `dsh-v0.1.1-rc.2`。它不向上游提交 pull request，因此下面的内容都未经上游项目评审；上游的开发者预览警告同样成立：**未来将出现破坏兼容性的变更。**
 
 ## 这个 fork 改了什么
 

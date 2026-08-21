@@ -6,7 +6,7 @@ A fork of [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (`
 
 Upstream `dsh` is an open-source agent harness from [DeepSeek AI](https://deepseek.com), built so that **everything is a plugin** and powered by [Cordis](https://github.com/cordiverse/cordis). Everything upstream documents still holds here; this page covers only what the fork changes and how to run it that way.
 
-The fork follows upstream by merge and currently carries `dsh-v0.1.1-rc.1`. It opens no upstream pull requests, so nothing below has been reviewed by the upstream project, and upstream's developer-preview warning applies unchanged: **THERE WILL BE COMPATIBILITY-BREAKING CHANGES.**
+The fork follows upstream by merge and currently carries `dsh-v0.1.1-rc.2`. It opens no upstream pull requests, so nothing below has been reviewed by the upstream project, and upstream's developer-preview warning applies unchanged: **THERE WILL BE COMPATIBILITY-BREAKING CHANGES.**
 
 ## What this fork changes
 

@@ -76,7 +76,7 @@ export interface ConnectionConfig {
    * is trusted or an authenticating proxy sits in front.
    */
   privilegedAuthority?: 'loopback' | 'trusted-hosts'
-  /** Maximum buffered JSON body for every `/api` request. */
+  /** Maximum buffered JSON body for every `/api` request. Default: 300 MiB. */
   maxRequestBodyBytes?: number
 }
 
