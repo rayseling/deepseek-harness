@@ -178,7 +178,11 @@ describe('ui-settings-general apply', () => {
     const fiber = b.ctx.plugin({ inject: [...inject], apply })
     await fiber.await()
     expect(b.slots.entries('settings.action')).toEqual([])
-    expect(b.settingsDescribe).not.toHaveBeenCalled()
+    // The page still reads its settings — persistence no longer turns on the
+    // page hostname. What stays loopback-only is the native action itself,
+    // which opens a document on the Host's physical desktop.
+    await vi.waitFor(() => { expect(b.settingsDescribe).toHaveBeenCalled() })
+    expect(b.settingsOpenDocument).not.toHaveBeenCalled()
     await fiber.dispose()
     for (const [name] of SEATS) expect(b.slots.entries(name)).toEqual([])
   })

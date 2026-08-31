@@ -2,6 +2,8 @@
 
 English | [中文](README.zh.md)
 
+> **This mirror is not upstream.** It tracks [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) plus one commit, rebased on each release. That commit makes the Web UI's settings surface persist through the Host for **every authenticated page**, where upstream enables it only for a page served from loopback — so on a deployment reachable over a network, settings become readable and writable by anyone who holds a browser session, which is the intended behaviour here and may not be what you want. Authority still rests on Connection's trusted-host fence plus the signed session cookie; the two actions that touch the host's own desktop stay loopback-only. Nothing else differs, and issues and pull requests belong upstream.
+
 DeepSeek Harness (`dsh`) is an open-source agent harness developed by [DeepSeek AI](https://deepseek.com).
 
 It is built on an **everything-is-a-plugin** architecture and powered by [Cordis](https://github.com/cordiverse/cordis), whose design is described in [_A Programming Paradigm for Spatiotemporal Composability_](https://arxiv.org/abs/2608.25512).

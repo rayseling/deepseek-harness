@@ -195,8 +195,28 @@ describe('ui-settings-models apply', () => {
     expect(() => b.locale.register('settings.models', 'en', {})).not.toThrow()
   })
 
-  it('keeps remote-browser acknowledgement in process memory', async () => {
-    const b = await bench(false)
+  it('reads a remote browser\u2019s acknowledgement from the Host like any other page', async () => {
+    // Persistence does not turn on the page hostname: Connection's trusted-host
+    // fence and the browser session decide authority, so an off-loopback page
+    // derives the acknowledgement from the same Host view a loopback page does.
+    const settings = {
+      describe: vi.fn(() => Promise.resolve({
+        ok: true as const,
+        value: {
+          writable: true,
+          hasDocument: false,
+          namespaces: [{
+            ns: WELCOME_NOTICE_SETTINGS_NAMESPACE,
+            schema: {},
+            value: {},
+            applies: 'live' as const,
+            secrets: [],
+            revision: 0,
+          }],
+        },
+      })),
+    }
+    const b = await bench(false, settings)
     declare(b.slots)
     await b.ctx.plugin({ inject: [...inject], apply }).await()
     const entry = b.slots.entries('settings.onboarding')
@@ -209,6 +229,7 @@ describe('ui-settings-models apply', () => {
     expect(injected.controller.store.getSnapshot()).toEqual({
       status: 'ready', acknowledged: false, error: null,
     })
+    expect(settings.describe).toHaveBeenCalled()
   })
 })
 

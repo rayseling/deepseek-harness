@@ -51,7 +51,7 @@ The package realizes one ownership rule: the browser keeps one shared mirror of 
 
 ### The describe mirror
 
-The plugin injects `remote` with its `settings` namespace, resolves Host persistence once from the fixed `remote.$host` facts, and owns the one `settings.describe` reader in the browser: a shared mirror refreshed on every forwarded `settings/document-updated` event and on `connection/reset` (the first connection included, closing the window where a commit lands between the eager read and the SSE subscription). Cross-namespace surfaces read it through `ctx.settingsScope.describe()`, a read/fold face (`getSnapshot`/`subscribe`/`ensure`, plus `acceptView` folding a write answer in).
+The plugin injects `remote` with its `settings` namespace, resolves Host persistence once — always Host, because an authenticated page is authorized by Connection's trusted-host fence and its browser session, not by the hostname it was served from — and owns the one `settings.describe` reader in the browser: a shared mirror refreshed on every forwarded `settings/document-updated` event and on `connection/reset` (the first connection included, closing the window where a commit lands between the eager read and the SSE subscription). Cross-namespace surfaces read it through `ctx.settingsScope.describe()`, a read/fold face (`getSnapshot`/`subscribe`/`ensure`, plus `acceptView` folding a write answer in).
 
 ### Scope derivation
 
@@ -94,7 +94,8 @@ None; this package neither assembles nor sends a provider request.
 
 These limits define where the settings transport cannot reach; they are current package constraints.
 
-- **Non-loopback pages get no durable settings** — this Client keeps Host persistence disabled there, so a scope starts `unavailable` and never crosses the wire; every row it backs is inert even though Connection authentication covers the API.
+- **The native-desktop surfaces stay loopback-only** — settings themselves reach any authenticated page, but the two actions that touch this machine's desktop (the document open in ui-settings-general, the path open in ui-deliverables) keep their own `remote.$host.isLoopback` gate, because no authentication scheme makes them appropriate for a remote operator. A remote page renders the rows and cannot invoke those two.
+- **`memory` persistence has no shipped selector** — the mode still exists on `SettingsDescribeMirror` and `SettingsScopeController`, and a scope built that way is terminally `unavailable`, but nothing in a shipped composition asks for it.
 
 <a id="dev-note"></a>
 ### Dev Note
