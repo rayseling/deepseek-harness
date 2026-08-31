@@ -28,4 +28,4 @@ The requested footer design prioritizes message actions and token accounting in 
 
 Unavailable speed or cache-hit data is omitted rather than replaced with invented values. The settings scope provides one accepted value to all consumers without duplicating subscription state. Component coverage checks mode-specific visibility; the [recorded-session browser scenario](../../../../apps/web/tests/message-actions.e2e.ts) exercises selection, reload persistence, and Compact output.
 
-On non-loopback browsers, the preference remains process-local because the settings scope cannot persist writes. Explicit selections update every consumer immediately; accepted Host settings reconcile the live value on loopback browsers.
+The preference persists through the Host from every authenticated page, as the [authenticated-page settings note](2026-08-31-host-settings-on-every-authenticated-page.md) records, and stays process-local only when the settings form cannot persist writes. Explicit selections update every consumer immediately; accepted Host settings reconcile the live value.

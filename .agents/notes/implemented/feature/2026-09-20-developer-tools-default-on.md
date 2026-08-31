@@ -10,7 +10,7 @@ New installations need access to developer views, preset selection, change summa
 
 ## Decision
 
-The Host schema defaults `ui-developer-tools.enabled` to `true`. Remote browsers with process-local preferences also start enabled. Saved Host values take precedence, including `false`. This supersedes only the initial default-off choice in [Shared developer-tool settings](2026-09-17-developer-tools-settings.md); that note retains ownership of shared persistence and rendering policy.
+The Host schema defaults `ui-developer-tools.enabled` to `true`. A memory-mode form, whose preference stays process-local, also starts enabled. Saved Host values take precedence, including `false`. This supersedes only the initial default-off choice in [Shared developer-tool settings](2026-09-17-developer-tools-settings.md); that note retains ownership of shared persistence and rendering policy.
 
 Host-backed clients publish disabled until an accepted schema-resolved value arrives. Loading, failed initial reads and an unavailable namespace do not grant interactive-preview capabilities. The Host supplies the default for an absent stored field; the client does not interpret an absent response as consent to enable scripts. An accepted value remains authoritative during later refreshes.
 

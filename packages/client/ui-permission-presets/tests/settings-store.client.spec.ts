@@ -161,7 +161,7 @@ describe('permission settings store', () => {
     })
   })
 
-  it('hides the row in a remote browser instead of loading forever', async () => {
+  it('hides the row under a memory-mode scope instead of loading forever', async () => {
     const describeCall = vi.fn()
     const mutate = vi.fn()
     const ctx = { remote: { settings: { describe: describeCall, mutate } } } as never

@@ -18,7 +18,7 @@ The owning Host Config schemas declare volatile locale, theme, and busy-Enter pr
 
 User changes update the live preference immediately and queue a revision-fenced mutation through the shared entry form. The provider owns one write queue per entry; consumers release their subscriptions when they unload. Provider disposal skips queued work, suppresses late publication, and waits for the in-flight operation.
 
-The Client keeps Host persistence disabled on non-loopback pages, so their preferences remain process-local even though Connection authenticates the complete API. Dynamic third-party theme ids remain in-process extensions outside the built-in Host schema; removing one resets the live registry without replacing the last durable built-in preference.
+The Client uses Host persistence on every authenticated page, whatever authority served it; the [authenticated-page settings note](../feature/2026-08-31-host-settings-on-every-authenticated-page.md) owns that scope. Dynamic third-party theme ids remain in-process extensions outside the built-in Host schema; removing one resets the live registry without replacing the last durable built-in preference.
 
 ## Alternatives considered
 
@@ -36,8 +36,8 @@ The Client keeps Host persistence disabled on non-loopback pages, so their prefe
 
 ## Consequences
 
-Appearance, Language, and busy-Enter choices follow the active profile across reloads, ports, and loopback origins. ConfigEditor and volatile HMR apply profile changes; the form mirror follows accepted values through settings invalidations. Legacy browser preference keys remain unused.
+Appearance, Language, and busy-Enter choices follow the active profile across reloads, ports, and every authenticated origin. ConfigEditor and volatile HMR apply profile changes; the form mirror follows accepted values through settings invalidations. Legacy browser preference keys remain unused.
 
 Boot may briefly show the domain default before the background read settles. A transient read failure keeps that default or the last good in-process value; reconnect retries. A write rejection can visibly restore the durable preference after the immediate local change.
 
-Focused unit coverage pins schema registration, listener-before-read ordering, nonblocking activation, schema-validated section acceptance, revisioned ordered writes, stale-response containment, failure recovery, disposal quiescence, and remote memory mode. The namespace-granular scope also carries multi-field sections, so later configuration surfaces can ride the same lifecycle instead of hand-rolling describe/mutate synchronization. The keyless Web settings scenario writes all three preferences through the UI, verifies the YAML document and empty legacy storage, reloads, and boots another Host on a distinct port against the same DSH home.
+Focused unit coverage pins schema registration, listener-before-read ordering, nonblocking activation, schema-validated section acceptance, revisioned ordered writes, stale-response containment, failure recovery, disposal quiescence, and host mode on non-loopback pages. The namespace-granular scope also carries multi-field sections, so later configuration surfaces can ride the same lifecycle instead of hand-rolling describe/mutate synchronization. The keyless Web settings scenario writes all three preferences through the UI, verifies the YAML document and empty legacy storage, reloads, and boots another Host on a distinct port against the same DSH home.

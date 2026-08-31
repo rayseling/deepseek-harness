@@ -2,6 +2,8 @@
 
 [English](README.md) | 中文
 
+> **这个镜像不是上游。** 它跟踪 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 并在其上多带一个 commit，每次发布时 rebase。那个 commit 让 Web UI 的设置面通过 Host 持久化到**每一个已认证页面**，而上游只对由 loopback 分发的页面启用——因此在一个可经网络访问的部署上，设置会对任何持有浏览器会话的人可读可写，这在这里是有意为之，但未必是你想要的。授权依然由 Connection 的可信主机围栏加签名会话 cookie 决定；触及宿主机自身桌面的那两个动作仍限 loopback。除此之外没有差异，issue 与 pull request 请提到上游。
+
 DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的开源 agent harness（智能体框架）。
 
 它构建于**一切皆插件**的架构之上，由 [Cordis](https://github.com/cordiverse/cordis) 驱动，其设计参见论文 [_A Programming Paradigm for Spatiotemporal Composability_](https://arxiv.org/abs/2608.25512)。

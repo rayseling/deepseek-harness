@@ -63,20 +63,27 @@ describe('developer tools settings', () => {
     expect(ctx.configForms.developerTools.enabled.getSnapshot()).toBe(false)
   })
 
-  it('shares one remote-browser preference across consumers and disposes it with the plugin', async () => {
+  it('shares one Host-backed preference across consumers on a remote browser and disposes it with the plugin', async () => {
+    // Persistence does not turn on the page hostname: an off-loopback page
+    // reads the preference from the Host like a loopback page does.
     const ctx = new Context()
     onTestFinished(() => ctx.fiber.dispose())
-    const describeCall = vi.fn()
+    const describeCall = vi.fn().mockResolvedValue({ ok: true, value: {
+      writable: true, hasDocument: true, namespaces: [{
+        ns: DEVELOPER_TOOLS_NAMESPACE,
+        schema: DeveloperToolsSettingsSchema.toJSON(),
+        value: { enabled: true }, revision: 1, applies: 'live', secrets: [],
+      }],
+    } })
     const remote = new TestRemote(ctx, { settings: { describe: describeCall } })
     remote.$host = { home: undefined, isLoopback: false }
     const fiber = ctx.plugin({ inject, apply: clientApply })
     await fiber.await()
     const preference = ctx.configForms.developerTools
     expect(fiber.ctx.configForms.developerTools.enabled).toBe(preference.enabled)
-    expect(preference.enabled.getSnapshot()).toBe(true)
-    await preference.setEnabled(true)
+    await ctx.configForms.describe().ensure()
+    expect(describeCall).toHaveBeenCalled()
     expect(fiber.ctx.configForms.developerTools.enabled.getSnapshot()).toBe(true)
-    expect(describeCall).not.toHaveBeenCalled()
     await fiber.dispose()
     expect(ctx.get('configForms')).toBeUndefined()
   })
@@ -97,7 +104,7 @@ describe('developer tools settings', () => {
   })
 })
 
-it('keeps remote browser choices local and publishes only changed values', async () => {
+it('keeps memory-mode choices local and publishes only changed values', async () => {
   const host = stubConfigForm<DeveloperToolsSettings>()
   host.publish({ mode: 'memory' })
   const preference = new DeveloperToolsPreference(host.scope)

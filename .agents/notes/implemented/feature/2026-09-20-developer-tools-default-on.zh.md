@@ -10,7 +10,7 @@ Status: implemented
 
 ## Decision
 
-Host schema 将 `ui-developer-tools.enabled` 默认为 `true`。使用进程内偏好的远程浏览器也从开启状态启动。已保存的 Host 值优先，包括 `false`。这仅取代[共享开发者工具设置](2026-09-17-developer-tools-settings.zh.md)中最初默认关闭的选择；该记录继续负责共享持久化和渲染策略。
+Host schema 将 `ui-developer-tools.enabled` 默认为 `true`。偏好仅在进程内生效的 memory 模式表单也从开启状态启动。已保存的 Host 值优先，包括 `false`。这仅取代[共享开发者工具设置](2026-09-17-developer-tools-settings.zh.md)中最初默认关闭的选择；该记录继续负责共享持久化和渲染策略。
 
 使用 Host 偏好的客户端在收到经过 schema 解析并接受的值之前发布关闭状态。加载中、首次读取失败和命名空间不可用均不授予交互式预览能力。缺少存储字段时由 Host 提供默认值；客户端不会把缺少响应解释为允许开启脚本。后续刷新期间，已接受的值继续有效。
 

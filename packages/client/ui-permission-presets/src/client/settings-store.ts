@@ -154,8 +154,8 @@ export class PermissionPresetSettingsController {
     if (this.disposed || this.saving) return
     const mirrored = this.describeFace.getSnapshot()
     if (mirrored.status === 'unavailable') {
-      // The terminal non-loopback state: this client keeps Host persistence disabled, so
-      // the row hides itself exactly like an unserved namespace.
+      // Terminal unavailability, from an unserved namespace or a memory-mode
+      // scope: the row hides itself instead of loading forever.
       this.store.update((state) => {
         state.status = 'unavailable'
         state.writable = false

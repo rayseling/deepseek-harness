@@ -9,7 +9,7 @@ export interface ConfigFormSnapshot<T> {
   /**
    * `loading` until the first accepted section, `ready` while one stands, and
    * `unavailable` when the namespace is not exposed to this client or the
-   * connection keeps preferences process-local (memory mode).
+   * form was constructed in memory mode, which keeps preferences process-local.
    */
   status: 'loading' | 'ready' | 'unavailable'
   /** Last accepted schema-resolved section; undefined before the first acceptance. */
@@ -29,7 +29,7 @@ export interface ConfigFormSnapshot<T> {
   revision: number | undefined
   /** Whether the Host document accepts writes; memory mode never does. */
   writable: boolean
-  /** `host` syncs with the Host document; `memory` keeps a remote browser process-local. */
+  /** `host` syncs with the Host document; `memory` keeps preferences process-local. */
   mode: 'host' | 'memory'
 }
 

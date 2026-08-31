@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-08-31-host-settings-on-every-authenticated-page.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-31-host-settings-on-every-authenticated-page.md
+/agent-note-host-backed-settings-on-every-authenticated-page:
+  en: 545121d8e673cde6
+  zh: c932346b1366d3d7
+/agent-note-host-backed-settings-on-every-authenticated-page/problem:
+  en: d05cce8ac3ed2e27
+  zh: f7ed7fee951cc978
+/agent-note-host-backed-settings-on-every-authenticated-page/decision:
+  en: ad27e807e4cbc415
+  zh: 5811b0b85c89c291
+/agent-note-host-backed-settings-on-every-authenticated-page/alternatives-considered:
+  en: ff1806aa1b5b5ee4
+  zh: cab8da9d8a37791a
+/agent-note-host-backed-settings-on-every-authenticated-page/consequences:
+  en: dc82064624bbb24c
+  zh: bd0005324913b9ca
