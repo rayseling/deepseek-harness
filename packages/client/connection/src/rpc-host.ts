@@ -65,6 +65,7 @@ export class HostConnectionService extends Service implements HostConnectionHand
   readonly operator: PeerScope
   private readonly interceptors = new Map<string, ConnectionRpcInterceptor>()
   private readonly fetchRoutes = new Map<string, RegisteredFetchRoute>()
+  private readonly channels = new Set<string>()
 
   /**
    * Provide the Host half over the active HTTP server.
@@ -188,10 +189,31 @@ export class HostConnectionService extends Service implements HostConnectionHand
         await bridge(req, res, fetchHandler)
       },
     }
-    return owner.effect(
-      () => owner.webServer.register(route),
-      `client-connection: ${channel} rpc channel`,
-    )
+    const label = `client-connection: ${channel} rpc channel`
+    const claim = owner.effect(() => {
+      if (this.channels.has(channel)) {
+        throw new Error(`connection: RPC channel ${JSON.stringify(channel)} is already registered`)
+      }
+      this.channels.add(channel)
+      return () => { this.channels.delete(channel) }
+    }, label)
+    // The child fiber follows the carrier: it registers the route whenever a
+    // `webServer` becomes active, including after a restart, and its disposal
+    // removes the route. `webCtx.get` because the owner's Connection shadow
+    // makes the property accessor throw `cannot get property "webServer"
+    // without inject` even inside this injection.
+    const carried = owner.inject(['webServer'], (webCtx) => {
+      webCtx.effect(() => {
+        const webServer = webCtx.get('webServer')
+        /* v8 ignore next -- this injection is active only while a `webServer` is active */
+        if (webServer === undefined) throw new Error(`connection: RPC channel ${JSON.stringify(channel)} has no active webServer`)
+        return webServer.register(route)
+      }, label)
+    })
+    return async () => {
+      await carried.dispose()
+      await claim()
+    }
   }
 
   private registerInterceptor(

@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-09-08-connection-rpc-channel-carrier-read.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-08-connection-rpc-channel-carrier-read.md
+/agent-note-register-connection-rpc-channels-on-the-active-carrier:
+  en: 3ac16012e33be205
+  zh: 44177b2bed94487a
+/agent-note-register-connection-rpc-channels-on-the-active-carrier/problem:
+  en: 9228300e36f9a77d
+  zh: d13c62ee17855919
+/agent-note-register-connection-rpc-channels-on-the-active-carrier/decision:
+  en: 5ca5731d3166cd56
+  zh: d50f4508d8c3860f
+/agent-note-register-connection-rpc-channels-on-the-active-carrier/alternatives-considered:
+  en: a83346ad449cb747
+  zh: bae291ca1e460e2c
+/agent-note-register-connection-rpc-channels-on-the-active-carrier/consequences:
+  en: e78bc919b9e312c0
+  zh: 6f5447f23a0887f1

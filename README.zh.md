@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-> **这个镜像不是上游。** 它跟踪 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 并在其上多带一个 commit，每次发布时 rebase。那个 commit 让 Web UI 的设置面通过 Host 持久化到**每一个已认证页面**，而上游只对由 loopback 分发的页面启用——因此在一个可经网络访问的部署上，设置会对任何持有浏览器会话的人可读可写，这在这里是有意为之，但未必是你想要的。授权依然由 Connection 的可信主机围栏加签名会话 cookie 决定；触及宿主机自身桌面的那两个动作仍限 loopback。除此之外没有差异，issue 与 pull request 请提到上游。
+> **这个镜像不是上游。** 它跟踪 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 并在其上多带两个 commit，每次发布时 rebase。其中一个改变行为：它让 Web UI 的设置面通过 Host 持久化到**每一个已认证页面**，而上游只对由 loopback 分发的页面启用——因此在一个可经网络访问的部署上，设置会对任何持有浏览器会话的人可读可写，这在这里是有意为之，但未必是你想要的。授权依然由 Connection 的可信主机围栏加签名会话 cookie 决定，同一个会话也能调用在宿主机自身桌面上打开文件的 Host 方法（设置文档、工作区路径、交付物）：上游和这个镜像都不检查它们的来源，只有设置文档的按钮在非 loopback 页面上被隐藏。另一个修的是上游缺陷，不改变任何部署选择：Connection 把插件的 RPC 通道注册到当前激活的 `webServer` 载体上，包括之后才启动或重启的载体，且不要求通道持有者 inject `webServer`。两者都记录为 Agent Note（[设置](.agents/notes/implemented/feature/2026-08-31-host-settings-on-every-authenticated-page.zh.md)、[connection](.agents/notes/implemented/bug-fix/2026-09-08-connection-rpc-channel-carrier-read.zh.md)）。除此之外没有差异，issue 与 pull request 请提到上游。
 
 DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的开源 agent harness（智能体框架）。
 

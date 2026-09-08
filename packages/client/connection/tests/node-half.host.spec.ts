@@ -345,6 +345,131 @@ describe('connection node half', () => {
     await dispose()
   })
 
+  it('registers a dedicated channel for a plugin that injects only connection', async () => {
+    // Production topology: the channel owner is a foreign plugin fiber, not the
+    // root context. `connection` itself no longer injects `webServer`, so a
+    // property read inside register() resolves against a context that never
+    // declared it and throws `cannot get property "webServer" without inject`,
+    // leaving the channel unrouted with no boot failure.
+    const ctx = new Context()
+    const routes: WebRoute[] = []
+    provideBrowserCredentials(ctx)
+    // The carrier arrives from its own fiber, as the web-app bundle mounts it:
+    // the property proxy is topology-sensitive, so a root-provided double would
+    // resolve where the shipped composition does not.
+    const carrier = ctx.plugin({
+      inject: [],
+      apply(carrierCtx: Context) {
+        carrierCtx.provide('webServer', fakeHttpServer(routes, []) as WebServer)
+      },
+    })
+    await carrier.await()
+    const fiber = ctx.plugin({ inject: [...inject], apply })
+    await fiber.await()
+
+    let registered: (() => Promise<void>) | undefined
+    let failure: unknown
+    const consumer = ctx.plugin({
+      inject: [],
+      apply(consumerCtx: Context) {
+        consumerCtx.inject(['connection'], (channelCtx) => {
+          try {
+            registered = channelCtx.connection.rpc.handle('/foreign', async () => ({ ok: true, value: null }))
+          } catch (error) { failure = error }
+        })
+      },
+    })
+    await consumer.await()
+    expect(failure).toBeUndefined()
+
+    expect(routes.map(route => route.path)).toContain('/foreign')
+    await registered?.()
+    expect(routes.map(route => route.path)).not.toContain('/foreign')
+    await consumer.dispose()
+    await fiber.dispose()
+  })
+
+  it('routes a dedicated channel on a webServer carrier that arrives after registration', async () => {
+    const ctx = new Context()
+    const routes: WebRoute[] = []
+    provideBrowserCredentials(ctx)
+    const fiber = ctx.plugin({ inject: [...inject], apply })
+    await fiber.await()
+
+    let registered: (() => Promise<void>) | undefined
+    const consumer = ctx.plugin({
+      inject: [],
+      apply(consumerCtx: Context) {
+        consumerCtx.inject(['connection'], (channelCtx) => {
+          registered = channelCtx.connection.rpc.handle('/foreign', async () => ({ ok: true, value: null }))
+        })
+      },
+    })
+    await consumer.await()
+    expect(registered).toBeTypeOf('function')
+
+    const carrier = ctx.plugin({
+      inject: [],
+      apply(carrierCtx: Context) {
+        carrierCtx.provide('webServer', fakeHttpServer(routes, []) as WebServer)
+      },
+    })
+    await carrier.await()
+    await expect.poll(() => routes.map(route => route.path)).toContain('/foreign')
+
+    await registered?.()
+    expect(routes.map(route => route.path)).not.toContain('/foreign')
+    const again = (ctx.get('connection') as HostConnectionHandle).rpc.handle('/foreign', async () => ({ ok: true, value: null }))
+    await expect.poll(() => routes.map(route => route.path)).toContain('/foreign')
+    await again()
+    await carrier.dispose()
+    await consumer.dispose()
+    await fiber.dispose()
+  })
+
+  it('re-registers a dedicated channel on a restarted webServer carrier', async () => {
+    const ctx = new Context()
+    provideBrowserCredentials(ctx)
+    const mountCarrier = async (routes: WebRoute[]) => {
+      const carrier = ctx.plugin({
+        inject: [],
+        apply(carrierCtx: Context) {
+          carrierCtx.provide('webServer', fakeHttpServer(routes, []) as WebServer)
+        },
+      })
+      await carrier.await()
+      return carrier
+    }
+    const firstRoutes: WebRoute[] = []
+    const first = await mountCarrier(firstRoutes)
+    const fiber = ctx.plugin({ inject: [...inject], apply })
+    await fiber.await()
+
+    let registered: (() => Promise<void>) | undefined
+    const consumer = ctx.plugin({
+      inject: [],
+      apply(consumerCtx: Context) {
+        consumerCtx.inject(['connection'], (channelCtx) => {
+          registered = channelCtx.connection.rpc.handle('/foreign', async () => ({ ok: true, value: null }))
+        })
+      },
+    })
+    await consumer.await()
+    expect(firstRoutes.map(route => route.path)).toContain('/foreign')
+
+    await first.dispose()
+    expect(firstRoutes.map(route => route.path)).not.toContain('/foreign')
+    const secondRoutes: WebRoute[] = []
+    const second = await mountCarrier(secondRoutes)
+    await expect.poll(() => secondRoutes.map(route => route.path)).toContain('/foreign')
+
+    expect(registered).toBeTypeOf('function')
+    await consumer.dispose()
+    expect(secondRoutes.map(route => route.path)).not.toContain('/foreign')
+    await second.dispose()
+    await fiber.dispose()
+  })
+
   it('provides a disposable dedicated RPC channel', async () => {
     const ctx = new Context()
     const routes: WebRoute[] = []
@@ -361,6 +486,7 @@ describe('connection node half', () => {
       calls.push({ endpoint, payload })
       return { ok: true, value: { accepted: true } }
     })
+    await expect.poll(() => routes.some(candidate => candidate.path === '/rpc')).toBe(true)
     const route = routes.find(candidate => candidate.path === '/rpc')
     expect(route).toBeDefined()
 
@@ -387,7 +513,7 @@ describe('connection node half', () => {
     }])
 
     expect(() => connection.rpc.handle('/rpc', async () => ({ ok: true, value: null })))
-      .toThrow(/duplicate route/)
+      .toThrow(/is already registered/)
     await remove()
     expect(routes.map(candidate => candidate.path)).toEqual([API_PATH])
     await fiber.dispose()
@@ -531,6 +657,7 @@ describe('connection node half', () => {
       if (endpoint === 'fail') throw new Error('handler broke')
       return { ok: true, value: null }
     })
+    await expect.poll(() => routes.some(candidate => candidate.path === '/rpc')).toBe(true)
     const route = routes.find(candidate => candidate.path === '/rpc')!
     const harnessHeaders = {
       host: 'harness.example',
