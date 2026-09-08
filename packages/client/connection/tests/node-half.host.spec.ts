@@ -336,6 +336,74 @@ describe('connection node half', () => {
     await dispose()
   })
 
+  it('registers a dedicated channel for a plugin that injects only connection', async () => {
+    // Production topology: the channel owner is a foreign plugin fiber, not the
+    // root context. `connection` itself no longer injects `webServer`, so a
+    // property read inside register() resolves against a context that never
+    // declared it and throws `cannot get property "webServer" without inject`,
+    // leaving the channel unrouted with no boot failure.
+    const ctx = new Context()
+    const routes: WebRoute[] = []
+    provideBrowserCredentials(ctx)
+    // The carrier arrives from its own fiber, as the web-app bundle mounts it:
+    // the property proxy is topology-sensitive, so a root-provided double would
+    // resolve where the shipped composition does not.
+    const carrier = ctx.plugin({
+      inject: [],
+      apply(carrierCtx: Context) {
+        carrierCtx.provide('webServer', fakeHttpServer(routes, []) as WebServer)
+      },
+    })
+    await carrier.await()
+    const fiber = ctx.plugin({ inject: [...inject], apply })
+    await fiber.await()
+
+    let registered: (() => Promise<void>) | undefined
+    let failure: unknown
+    const consumer = ctx.plugin({
+      inject: [],
+      apply(consumerCtx: Context) {
+        consumerCtx.inject(['connection'], (channelCtx) => {
+          try {
+            registered = channelCtx.connection.rpc.handle('/foreign', async () => ({ ok: true, value: null }))
+          } catch (error) { failure = error }
+        })
+      },
+    })
+    await consumer.await()
+    expect(failure).toBeUndefined()
+
+    expect(routes.map(route => route.path)).toContain('/foreign')
+    await registered?.()
+    expect(routes.map(route => route.path)).not.toContain('/foreign')
+    await consumer.dispose()
+    await fiber.dispose()
+  })
+
+  it('refuses a dedicated channel while no webServer carrier is active', async () => {
+    const ctx = new Context()
+    provideBrowserCredentials(ctx)
+    const fiber = ctx.plugin({ inject: [...inject], apply })
+    await fiber.await()
+
+    let failure: unknown
+    const consumer = ctx.plugin({
+      inject: [],
+      apply(consumerCtx: Context) {
+        consumerCtx.inject(['connection'], (channelCtx) => {
+          try {
+            channelCtx.connection.rpc.handle('/foreign', async () => ({ ok: true, value: null }))
+          } catch (error) { failure = error }
+        })
+      },
+    })
+    await consumer.await()
+    expect(failure).toBeInstanceOf(Error)
+    expect((failure as Error).message).toBe('connection: RPC channel "/foreign" needs a webServer carrier')
+    await consumer.dispose()
+    await fiber.dispose()
+  })
+
   it('provides a disposable dedicated RPC channel', async () => {
     const ctx = new Context()
     const routes: WebRoute[] = []

@@ -176,7 +176,17 @@ export class HostConnectionService extends Service implements HostConnectionHand
       },
     }
     return owner.effect(
-      () => owner.webServer.register(route),
+      () => {
+        // Soft read: this plugin does not inject `webServer` (the Electron host
+        // provides Connection without one), so the property accessor would
+        // throw `cannot get property "webServer" without inject` and take every
+        // channel registration with it.
+        const webServer = owner.get('webServer')
+        if (webServer === undefined) {
+          throw new Error(`connection: RPC channel ${JSON.stringify(channel)} needs a webServer carrier`)
+        }
+        return webServer.register(route)
+      },
       `client-connection: ${channel} rpc channel`,
     )
   }
