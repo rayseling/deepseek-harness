@@ -244,6 +244,43 @@ describe('ModelSelect reasoning effort', () => {
     }
   })
 
+  // WebKit gives a pressed `<button>` no focus, so a press that moved focus
+  // would pull it off the drilled row with no relatedTarget; `onBlur` would
+  // close the card and unmount the row before its mouseup, leaving no click.
+  // false = preventDefault ran.
+  it('keeps focus in place while a card button is pressed, and selects on click', () => {
+    const select = vi.fn().mockResolvedValue({ ok: true, value: undefined })
+    const groups = [{
+      id: 'deepseek-official',
+      name: 'DeepSeek',
+      models: [
+        { id: 'deepseek-v4-flash', name: 'DeepSeek-V4-Flash', reasoning },
+        { id: 'deepseek-v4-pro', name: 'DeepSeek-V4-Pro', reasoning },
+      ],
+    }]
+    render(<ModelSelect
+      locked={false}
+      available
+      directory={createSnapshotStore(state({ groups }))}
+      load={vi.fn()}
+      select={select}
+      t={t}
+    />)
+    fireEvent.click(screen.getByRole('button', { name: /选择模型/ }))
+    const cell = screen.getAllByRole('menuitem')[0]!
+    expect(fireEvent.mouseDown(cell)).toBe(false)
+    fireEvent.click(cell)
+    // The drilled pane focused its checked row; pressing another row leaves it there.
+    const focused = document.activeElement
+    const row = screen.getByRole('menuitemradio', { name: /DeepSeek-V4-Pro/ })
+    expect(fireEvent.mouseDown(row)).toBe(false)
+    expect(document.activeElement).toBe(focused)
+    // Only buttons: a press on a group title keeps the browser's default.
+    expect(fireEvent.mouseDown(screen.getByText('DeepSeek'))).toBe(true)
+    fireEvent.click(row)
+    expect(select).toHaveBeenCalledWith({ provider: 'deepseek-official', model: 'deepseek-v4-pro' })
+  })
+
   it('renders no Agent-bound control for an addressed subagent session', () => {
     const load = vi.fn()
     render(<ModelSelect

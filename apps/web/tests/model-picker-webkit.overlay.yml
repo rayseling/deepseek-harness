@@ -1,0 +1,8 @@
+# The fixture-less web scaffold registers no adapter, so the shipped
+# deepseek-official default would be a route nothing serves. This scenario
+# starts the default on its own declared route so the picker opens on a model
+# the scaffold describes.
+- id: agent-default-model
+  config:
+    provider: acme-gateway
+    model: acme-think

@@ -373,6 +373,13 @@ export function ModelSelect(
           role="menu"
           aria-label={t('menu.aria')}
           aria-busy={state.status === 'loading' || busy}
+          // Pressing a card button keeps focus where it is. WebKit gives a
+          // pressed `<button>` no focus, so the press would pull focus off the
+          // focused row with no relatedTarget; `onBlur` would close the card
+          // and unmount the row before its mouseup, and no click would follow.
+          onMouseDown={(event) => {
+            if (event.target instanceof Element && event.target.closest('button') !== null) event.preventDefault()
+          }}
         >
           {pane === 'root' && (
             <>
