@@ -46,25 +46,26 @@ interface ResourceRecord {
 export const RESOURCE_SCHEME = 'dsh-resource'
 
 /**
- * The protocol key of one address: the host of a `dsh-resource://` URL, as the
- * URL parser reads it (lower-cased). Any other string — another scheme, or one
- * the URL parser rejects — names no protocol and is treated like an address
- * whose protocol has no provider.
+ * Matches `dsh-resource://<host>` with a nonempty host, scheme case-insensitive.
+ * The host is read textually instead of through `new URL(address).hostname`:
+ * Chromium before its standard-compliant non-special-scheme parser (confirmed
+ * on Chrome 126) reports an empty host for every non-special scheme, which
+ * would turn every resource address into "no provider".
+ */
+const RESOURCE_SCHEME_PATTERN = RESOURCE_SCHEME.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+const RESOURCE_HOST = new RegExp(`^${RESOURCE_SCHEME_PATTERN}://([^/?#]+)`, 'i')
+
+/**
+ * The protocol key of one address: the host of a `dsh-resource://` URL,
+ * lower-cased. Any other string — another scheme, a missing host, or a path
+ * without a scheme — names no protocol and is treated like an address whose
+ * protocol has no provider.
  * @param address - the full address.
  * @returns the protocol key, or `undefined` when the address is not a resource address.
  */
 export function protocolOf(address: string): string | undefined {
-  let parsed: URL
-  try {
-    parsed = new URL(address)
-  } catch {
-    // The URL parser rejects strings without a scheme (`/a/b.txt`, `''`);
-    // nothing else throws here, and an unparseable address is simply not ours.
-    return undefined
-  }
-  if (parsed.protocol !== `${RESOURCE_SCHEME}:`) return undefined
-  // A non-special scheme's host is opaque to the URL parser and keeps its case.
-  return parsed.hostname === '' ? undefined : parsed.hostname.toLowerCase()
+  const host = RESOURCE_HOST.exec(address)?.[1]
+  return host === undefined ? undefined : host.toLowerCase()
 }
 
 function idle(status: 'none' | 'loading'): ResourceSnapshot<unknown> {

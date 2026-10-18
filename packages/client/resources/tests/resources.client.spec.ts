@@ -97,12 +97,28 @@ describe('protocolOf', () => {
     expect(protocolOf('dsh-resource://file/session/s1/home/ys/b.txt')).toBe('file')
     expect(protocolOf('DSH-RESOURCE://File/session/s1/a')).toBe('file')
     expect(protocolOf('dsh-resource://chat/node/1')).toBe('chat')
+    expect(protocolOf('dsh-resource://file')).toBe('file')
     // A navigation address is not a resource.
     expect(protocolOf('sidebar://guide')).toBeUndefined()
     expect(protocolOf('file://sessions/s1/a.txt')).toBeUndefined()
     expect(protocolOf('dsh-resource:///no-host')).toBeUndefined()
     expect(protocolOf('/a/b.txt')).toBeUndefined()
     expect(protocolOf('')).toBeUndefined()
+  })
+
+  it('reads the host without the URL parser, which reports none for non-special schemes on Chromium 126 and earlier', () => {
+    class EmptyHostURL extends URL {
+      override get hostname(): string {
+        return ''
+      }
+    }
+    vi.stubGlobal('URL', EmptyHostURL)
+    onTestFinished(() => {
+      vi.unstubAllGlobals()
+    })
+    expect(new URL('dsh-resource://file/a').hostname).toBe('')
+    expect(protocolOf('dsh-resource://file/session/s1/a')).toBe('file')
+    expect(protocolOf('dsh-resource:///no-host')).toBeUndefined()
   })
 })
 
