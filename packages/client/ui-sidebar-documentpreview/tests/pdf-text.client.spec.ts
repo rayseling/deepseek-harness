@@ -4,8 +4,8 @@ import type { PageViewport, PDFPageProxy } from 'pdfjs-dist'
 import { afterEach, expect, it, vi } from 'vitest'
 
 const api = vi.hoisted(() => ({ render: vi.fn(), cancel: vi.fn(), create: vi.fn() }))
-vi.mock('pdfjs-dist', () => ({}))
-vi.mock('pdfjs-dist/web/pdf_viewer.mjs', () => ({
+vi.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({}))
+vi.mock('pdfjs-dist/legacy/web/pdf_viewer.mjs', () => ({
   TextLayerBuilder: class {
     div = document.createElement('div')
     constructor(options: unknown) { api.create(options) }

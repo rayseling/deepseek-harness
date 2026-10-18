@@ -1,7 +1,8 @@
 /** PDF.js's viewer owns selection boundaries and copy normalization; the overlay follows its canvas. */
-// The official viewer resolves its version-matched engine through pdfjsLib.
-import 'pdfjs-dist'
-import { TextLayerBuilder } from 'pdfjs-dist/web/pdf_viewer.mjs'
+// The official viewer resolves its version-matched engine through pdfjsLib,
+// so the engine import stays the same `legacy` build this module imports.
+import 'pdfjs-dist/legacy/build/pdf.mjs'
+import { TextLayerBuilder } from 'pdfjs-dist/legacy/web/pdf_viewer.mjs'
 import type { RenderPdfText } from './document.ts'
 
 /**

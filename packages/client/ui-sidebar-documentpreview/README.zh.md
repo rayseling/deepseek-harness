@@ -143,6 +143,7 @@ Office Remote 通过 Connection 的 multipart 二进制传输返回原生 `Uint8
 - **Office 转换限制。** 预览不启动原生 Office 编辑器，也不下载引擎。二进制 `.doc` 和 `.ppt` 文件不返回缺失字体诊断。转换保真度与资源限制由 [LibreOffice 提供方](../../document/office-to-pdf/README.zh.md)负责。
 - **文本顺序分页，完整文件受限。** 定位到较深处的源码行需要先加载此前各页；PDF、HTML 和图片必须取得 Host `maxFileBytes` 上限内的完整结果。
 - **PDF 栅格分配有上限。** 每页位图最多为 16,777,216 像素；超大页面或高像素密度屏幕上的高比例缩放仍可能低于设备分辨率。
+- **PDF 渲染以 PDF.js `legacy` 构建的浏览器下限为准。** PDF 引擎、Worker 与文本层随 PDF.js 的 `legacy` 构建发布，[PDF.js FAQ](https://github.com/mozilla/pdf.js/wiki/Frequently-Asked-Questions) 为该构建列出 Chrome 125+、Firefox ESR 与 Safari 18+（标注“Mostly”）；modern 构建未加 polyfill 直接调用 `Promise.try` 与 `Math.sumPrecise`，在 Chrome 126 上 Worker 以「PDF 渲染进程无法继续，请重试」终止。低于该下限的浏览器不受支持。
 - **字节视图不恢复滚动位置。** PDF、HTML 与图片的渲染器重新挂载或重新载入时可能回到顶部；固定 PDF 与图片缩放可产生横向滚动，HTML iframe 的滚动属于其不透明浏览上下文。
 - **本地 HTML 依赖集合有限。** 只打包直接引用的经典 `.js` 脚本和 `.css` 样式表。浏览器解析的资源仍受浏览器源与网络规则限制；iframe 不获得运行时文件读取桥接。
 - **滚动写入未节流。** 每次滚动事件都把偏移记进 store；行块已 memo 化，于是由此引发的重渲染交还给 React 的是同一批元素。

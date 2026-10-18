@@ -66,6 +66,9 @@ describe('published document preview licenses', () => {
       expect(client).not.toContain('//! Bundled PDF.js license notices')
       expect(client).not.toContain('/pdfjs-dist/')
       expect(pdf).toContain('//! Bundled PDF.js license notices')
+      // The inlined Worker is the `legacy` build: only it carries the core-js
+      // `Math.sumPrecise` polyfill the README's browser floor relies on.
+      expect(pdf).toContain('sumPrecise:function')
       const excel = run('tar', ['-xOf', resolve(packageRoot, packed.filename), 'package/lib/client.excel.js'], packageRoot, task.timeout)
       expect(excel).not.toMatch(/\brequire\("\.\/client[^"/]*\.js"\)/u)
       expect(client).not.toContain('FortuneSheet')

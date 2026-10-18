@@ -1,5 +1,8 @@
-/** Build-owned, same-version PDF.js resources; all binary assets are decoded locally. */
-import workerSource from 'pdfjs-dist/build/pdf.worker.min.mjs?raw'
+/**
+ * Build-owned, same-version PDF.js resources; all binary assets are decoded locally.
+ * The `legacy` build carries the polyfills the README's browser floor relies on.
+ */
+import workerSource from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?raw'
 
 export { workerSource }
 
